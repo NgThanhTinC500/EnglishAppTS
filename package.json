@@ -21,9 +21,9 @@
     "typeorm": "^0.3.27"
   },
   "scripts": {
-    "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
-    "build": "rimraf build && tsc",
-    "start": "npm run build && node build/index.js",
+    "dev": "nodemon",
+    "build": "rimraf build && concurrently \"tsc\"",
+    "start": "npm run build && nodemon build/index.ts",
     "typeorm": "typeorm-ts-node-commonjs"
   }
 }

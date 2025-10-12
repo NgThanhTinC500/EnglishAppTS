@@ -1,5 +1,5 @@
 import { IsNotEmpty, Min } from "class-validator"
-import { Entity, PrimaryGeneratedColumn, Column, Unique } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, Unique, CreateDateColumn, UpdateDateColumn  } from "typeorm"
 
 @Entity()
 @Unique(["email"])
@@ -17,7 +17,7 @@ export class User {
     @IsNotEmpty({ message: "Name is required" })
     email: string
 
-    @Column()
+    @Column({ nullable: true })
     photo: String
 
     @Column()
@@ -32,13 +32,13 @@ export class User {
     role: String
     enum: ["user", "admin"]
 
-    @Column()
+    @Column({ default: true })
     isActive: Boolean
 
-    @Column()
+    @CreateDateColumn({ type: "timestamp" })
     createdAt: Date
 
-    @Column()
+    @UpdateDateColumn({ type: "timestamp" })
     updatedAt: Date
 
 

@@ -1,7 +1,7 @@
 import * as express from "express";
 import * as bodyParser from "body-parser";
 import { AppDataSource } from "./data-source";
-import userRouter from "./router/UserRouter";
+import userRouter from "./router/userRouter";
 
 AppDataSource.initialize()
   .then(async () => {
