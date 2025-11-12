@@ -1,33 +1,37 @@
-//controller/userController.ts
 import { Request, Response } from "express";
-import { userRepository } from "../repository";
+// import { AppDataSource } from "../data-source";
+// import { User } from "../entity/User";
+import { UserService } from "../service/userService";
+import { userRepository } from "../repository/userRepository";
+
+const userService = new UserService(userRepository);
 
 export class UserController {
-  static async all(request: Request, response: Response) {
-    const data = await userRepository.findAll();
-    return response.status(200).send(data);
+  static async all(req: Request, res: Response) {
+    const users = await userService.findAll();
+    res.status(200).json(users);
   }
 
-  static async create(request: Request, response: Response) {
-    const data = await userRepository.createUser(request.body);
-    return response.status(201).send(data);
+  static async findOne(req: Request, res: Response) {
+    const id = String(req.params.id);
+    const user = await userService.findOne(id);
+    res.status(200).json(user);
   }
 
-  static async findOne(request: Request, response: Response) {
-    const id = Number(request.params.id);
-    const data = await userRepository.findOne(id);
-    return response.send(data);
+  static async create(req: Request, res: Response) {
+    const newUser = await userService.createUser(req.body);
+    res.status(201).json(newUser);
   }
 
-  static async update(request: Request, response: Response) {
-    const id = Number(request.params.id);
-    const data = await userRepository.updateUser(id, request.body);
-    return response.send(data);
+  static async update(req: Request, res: Response) {
+    const id = String(req.params.id);
+    const updatedUser = await userService.updateUser(id, req.body);
+    res.status(200).json(updatedUser);
   }
 
-  static async delete(request: Request, response: Response) {
-    const id = Number(request.params.id);
-    const data = await userRepository.delete(id);
-    return response.send(data);
+  static async delete(req: Request, res: Response) {
+    const id = Number(req.params.id);
+    const result = await userService.deleteUser(id);
+    res.status(200).json(result);
   }
 }

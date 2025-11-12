@@ -4,26 +4,58 @@
   "description": "Awesome project developed with TypeORM.",
   "type": "commonjs",
   "devDependencies": {
-    "@types/node": "^22.18.10",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "@eslint/js": "9.39.1",
+    "@types/node": "22.18.10",
+    "@types/nodemailer": "7.0.3",
+    "@typescript-eslint/eslint-plugin": "8.46.3",
+    "@typescript-eslint/parser": "8.46.3",
+    "eslint": "9.39.1",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-import": "2.32.0",
+    "eslint-plugin-prettier": "5.5.4",
+    "globals": "16.5.0",
+    "ts-node": "10.9.2",
+    "typescript": "5.8.2",
+    "typescript-eslint": "8.46.3"
   },
   "dependencies": {
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.2",
-    "concurrently": "^9.2.1",
-    "express": "^5.1.0",
-    "nodemon": "^3.1.10",
-    "pg": "^8.16.3",
-    "pg-query-stream": "^4.10.3",
-    "reflect-metadata": "^0.2.2",
-    "rimraf": "^6.0.1",
-    "typeorm": "^0.3.27"
+    "bcrypt": "6.0.0",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.2",
+    "concurrently": "9.2.1",
+    "crypto-js": "4.2.0",
+    "dotenv": "17.2.3",
+    "express": "5.1.0",
+    "express-rate-limit": "8.1.0",
+    "jsonwebtoken": "9.0.2",
+    "nodemailer": "7.0.10",
+    "nodemon": "3.1.10",
+    "pg": "8.16.3",
+    "pg-query-stream": "4.10.3",
+    "reflect-metadata": "0.2.2",
+    "rimraf": "5.0.1",
+    "typeorm": "0.3.27"
   },
   "scripts": {
-    "dev": "nodemon",
-    "build": "rimraf build && concurrently \"tsc\"",
-    "start": "npm run build && nodemon build/index.ts",
-    "typeorm": "typeorm-ts-node-commonjs"
+
+    "//": "Chạy server ở chế độ dev, chạy trực tiếp TS không cần build, chạy file src/index.ts",
+    "start:dev": "nodemon --exec ts-node src/index.ts",
+
+    "//": "Chạy server ở chế độ production, chạy file build/index.js đã được build từ TS sang JS",
+    "start:prod": "cross-env NODE_ENV=production node build/index.js",
+
+    "//": "rimraf build: xoá sạch thư mục build cũ",
+    "//": "tsc: chạy TypeScript Compiler để chuyển src/**/*.ts → build/**/*.js",
+    "build": "rimraf build && tsc",
+
+    "//": "npm run build: build lại code TypeScript. Sau đó chạy file node build/index.js",
+    "//": "Tức là: Build code, rồi chạy app bằng bản đã build.",
+    "start": "npm run build && node build/index.js",
+
+    "//": "Chạy các lệnh TypeORM với ts-node và CommonJS",
+    "typeorm": "typeorm-ts-node-commonjs",
+
+    "lint": "eslint \"src/**/*.{js,ts,tsx}\"",
+    "lint:fix": "eslint 'src/**/*.{js,ts,tsx}' --fix"
   }
 }
