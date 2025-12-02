@@ -1,7 +1,8 @@
 import { IsNotEmpty, MinLength } from "class-validator"
-import { Entity, PrimaryGeneratedColumn, Column, Unique,BeforeInsert, BeforeUpdate } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, Unique, BeforeInsert, BeforeUpdate, OneToMany } from "typeorm"
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { FlashcardDeck } from "./FlashcardDeck";
 
 
 export enum UserRole {
@@ -54,6 +55,11 @@ export class User {
     @Column({ type: 'timestamp', nullable: true })
     passwordResetExpires: Date;
 
+    // flashcarddeck.id => đại diện cho id trong bản ghi flashcarddeck
+    // phải trỏ vào tên quan hệ
+    @OneToMany(() => FlashcardDeck, (flashcarddeck) => flashcarddeck.user)
+    flashcarddecks: FlashcardDeck[];
+
 
     @BeforeInsert()
     @BeforeUpdate() // chỉ trigger khi dùng save() 
@@ -77,7 +83,7 @@ export class User {
     }
 
 
-    
+
     // Create password reset token
     createPasswordResetToken(): string {
         const resetToken = crypto.randomBytes(32).toString('hex');
@@ -90,7 +96,7 @@ export class User {
     }
 
     // Compare password
-    async correctPassword(candidatePassword: string, userPassword:string): Promise<boolean> {
+    async correctPassword(candidatePassword: string, userPassword: string): Promise<boolean> {
         // console.log("candidatePassword:", candidatePassword);
         // console.log("userPassword:", userPassword);
         return await bcrypt.compare(candidatePassword, userPassword);

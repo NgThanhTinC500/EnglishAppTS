@@ -10,12 +10,12 @@ const authService = new AuthService(userService);
 
 export class AuthController {
 
-  static async signup(req: Request, res: Response) {
-    await authService.signup(req, res);
+  static async signup(req: Request, res: Response, next: NextFunction) {
+    await authService.signup(req, res, next);
   }
 
-  static async login(req: Request, res: Response) {
-    await authService.login(req, res);
+  static async login(req: Request, res: Response, next: NextFunction) {
+    await authService.login(req, res, next);
   }
 
   // Check if user has token

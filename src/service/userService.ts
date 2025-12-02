@@ -1,4 +1,4 @@
-import { Repository } from "typeorm";
+import { Repository, UpdateResult } from "typeorm";
 import { FindOptionsWhere } from "typeorm";
 import { User } from "../entity/User";
 export class UserService {
@@ -12,12 +12,15 @@ export class UserService {
   }
 
   async findAll() {
-    return await this.userRepository.find();
+    return await this.userRepository.find({
+      where: { isActive: true }
+    });
   }
 
   async findOne(id: string) {
     return this.userRepository.findOne({ where: { id } });
   }
+
   async findOneWithPassword(id: string) {
     return await this.userRepository
       .createQueryBuilder("user")
@@ -26,12 +29,12 @@ export class UserService {
       .getOne();
   }
 
-
-
   // async updateUser(id: string, data: Partial<User>) {
   //   await this.userRepository.update(id, data);
   //   return await this.findOne(id);
   // }
+
+  // Partial: chỉ cần truyền một số trường cần cập nhật
   async updateUser(id: string, data: Partial<User>) {
     const { password, passwordConfirm } = data;
     console.log("================================")
@@ -44,15 +47,12 @@ export class UserService {
     }
     if (password) user.password = password;
     if (passwordConfirm !== undefined) user.passwordConfirm = passwordConfirm;
-
     await this.userRepository.save(user);
-
     return await this.findOne(id);
   }
 
-
   async deleteUser(id: number) {
-    await this.userRepository.delete(id);
+    await this.userRepository.update(id, {isActive: false});
     return { message: "User deleted successfully" };
   }
 
@@ -73,11 +73,15 @@ export class UserService {
   async save(user: User): Promise<User> {
     return await this.userRepository.save(user);
   }
+  // Mặc định, TypeORM sau khi save() sẽ gửi thêm một truy vấn SELECT để lấy bản ghi mới nhất từ DB (gọi là reload).
+  // cần trả về user đã được cập nhật nhưng không cần reload lại từ DB
   async saveNoReload(user: User): Promise<User> {
     return await this.userRepository.save(user, { reload: false });
   }
-  async saveResetToken(user: User) {
-    return this.userRepository.update(user.id, {
+
+  // chỉ cần cập nhật một số trường
+  async saveResetToken(user: User) : Promise<UpdateResult> {
+    return await this.userRepository.update(user.id, {
       passwordResetToken: user.passwordResetToken,
       passwordResetExpires: user.passwordResetExpires,
     });

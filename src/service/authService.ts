@@ -8,6 +8,7 @@ import sendEmail from "../utils/email";
 import AppError from "../utils/appError";
 import { Request, Response, NextFunction } from "express";
 import { JwtPayload } from "../interface/jwtPayload.interface";
+import catchAsync from "../utils/catchAsync";
 
 export class AuthService {
   constructor(private readonly userService: UserService) { }
@@ -36,25 +37,28 @@ export class AuthService {
     res.status(statusCode).json({
       status: "success",
       token,
-      data: { user },
+      data: {
+        user
+      },
     });
   }
 
   // SIGNUP
-  async signup(req: Request, res: Response) {
+  signup = catchAsync(async (req: Request, res: Response, next : NextFunction) => {
+    console.log("Kiem tra chuc nang")
     const { name, email, password, passwordConfirm } = req.body;
     const existingUser = await this.userService.findByEmail(email);
     if (existingUser) {
-      return res.status(400).json({ message: "Email already in use" });
+      return next(new AppError('Email already in use', 400));
     }
     const newUser = await this.userService.createUser({
       name, email, password, passwordConfirm
     });
     this.createSendToken(newUser, 201, res);
-  }
+  })
 
   // LOGIN
-  async login(req: Request, res: Response) {
+  login = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const { email, password } = req.body;
     // Check if email and password exist
     if (!email || !password) {
@@ -67,14 +71,11 @@ export class AuthService {
     // Find user by email
     const user = await this.userService.findByEmail(email);
     if (!user || !(await user.correctPassword(password, user.password))) {
-      return res.status(401).json({
-        status: "fail",
-        message: "Incorrect email or password",
-      });
+      return next(new AppError('Incorrect email or password', 401));
     }
     console.log("da den day")
     this.createSendToken(user, 200, res);
-  }
+  })
 
   // LOG OUT
   async logout(req: Request, res: Response) {
@@ -101,10 +102,9 @@ export class AuthService {
     }
 
     if (!token) {
-      return res.status(401).json({
-        status: "fail",
-        message: "You are not logged in! Please log in to get access.",
-      });
+      return next(
+        new AppError('You are not logged in, please login to get access', 401),
+      );
     }
 
     // 2) verify token
@@ -114,14 +114,13 @@ export class AuthService {
       process.env.JWT_SECRET as string
     ) as JwtPayload;
 
-    
+
     // 3) Check if user still exists
     const currentUser = await this.userService.findOne(decoded.id);
     if (!currentUser) {
-      return res.status(401).json({
-        status: "fail",
-        message: "The user belonging to this token does no longer exist.",
-      });
+      return next(
+        new AppError('The User belonging to this token does not exist', 401),
+      );
     }
 
     console.log("da chạy đến đây 2")
@@ -135,6 +134,7 @@ export class AuthService {
 
     req.user = currentUser;
     console.log("da chạy đến đây 3")
+    console.log(req.user)
     next();
   }
 
@@ -143,36 +143,39 @@ export class AuthService {
   restrictTo(...roles: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
       if (!roles.includes(req.user.role)) {
-        return res.status(403).json({
-          status: "fail",
-          message: "You do not have permission to perform this action"
-        });
+        return next(
+          new AppError('You do not have permission to perform this action', 403),
+        );
       }
       next();
     };
   }
 
 
-  async updatePassword(req: Request, res: Response, next: NextFunction) {
+  updatePassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     // 1) Check user exists
     const user = await this.userService.findOneWithPassword(req.user.id);
     console.log(user);
     console.log(req.user.id);
     // 2) Check if password  correct
     if (!(await user.correctPassword(req.body.currentPassword, user.password))) {
+      // next(new AppError) == next(err)
       return next(new AppError('Your current password is wrong', 401))
     }
     // 3) oke thì update password
     user.password = req.body.newPassword;
     user.passwordConfirm = req.body.passwordConfirm;
+
+    // không dùng save, vì save gọi @BeforeUpdate nên sẽ  trigger hook hashPassword
     await this.userService.updateUser(user.id, {
       password: user.password,
       passwordConfirm: user.passwordConfirm,
     });
-    this.createSendToken(user, 200, res);
-  }
 
-  async forgotPassword(req: Request, res: Response, next: NextFunction) {
+    this.createSendToken(user, 200, res);
+  })
+
+  forgotPassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     // 1) Get user based on POSTed email
     const user = await this.userService.findByEmail(req.body.email);
     if (!user) {
@@ -200,37 +203,33 @@ export class AuthService {
       user.passwordResetExpires = undefined;
       return next(new AppError('There was an error sending the email. Try again later!', 500));
     }
-  }
+  })
 
-  async resetPassword(req: Request, res: Response, next: NextFunction) {
-    try {
-      console.log("req.params.token:", req.params.token);
-      const hashedToken = crypto
-        .createHash('sha256')
-        .update(req.params.token)
-        .digest('hex');
-      console.log("hashedToken:", hashedToken);
-      const user = await this.userService.findByCondition({
-        passwordResetToken: hashedToken,
-        passwordResetExpires: MoreThan(new Date()),
-      });
+  resetPassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    console.log("req.params.token:", req.params.token);
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(req.params.token)
+      .digest('hex');
+    console.log("hashedToken:", hashedToken);
+    const user = await this.userService.findByCondition({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: MoreThan(new Date()),
+    });
 
-      if (!user) {
-        return next(new AppError('Token is invalid or has expired', 400));
-      }
-
-      user.password = req.body.password;
-      user.passwordConfirm = req.body.passwordConfirm;
-      user.passwordResetToken = undefined;
-      user.passwordResetExpires = undefined;
-
-      await this.userService.save(user);
-
-      this.createSendToken(user, 201, res);
-    } catch (err) {
-      next(err);
+    if (!user) {
+      return next(new AppError('Token is invalid or has expired', 400));
     }
-  }
+
+    user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+
+    await this.userService.save(user);
+
+    this.createSendToken(user, 201, res);
+  })
 }
 
 

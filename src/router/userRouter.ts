@@ -8,10 +8,12 @@ const userRouter = Router();
 userRouter.post("/signup", AuthController.signup);
 userRouter.post("/login", AuthController.login);
 userRouter.post('/forgotPassword', AuthController.forgotPassword);
+userRouter.patch('/resetPassword/:token', AuthController.resetPassword);
+
 
 
 userRouter.use(AuthController.protect);
-userRouter.patch('/resetPassword/:token', AuthController.resetPassword);
+
 userRouter.patch("/updateMyPassword", AuthController.updatePassword);
 
 // userRouter.use(AuthController.restricTo("admin"));

@@ -12,12 +12,15 @@ export const AppDataSource = new DataSource({
   database: process.env.POSTGRES_DB,
   synchronize: false, // nên tắt để dùng migrationx
   logging: true, // display query in console , ex: SELECT * FROM ...
-  entities: ["build/entity/**/*.js"], // chỉ cho TypeORM biết nơi tìm các entity
-  migrations: ["src/migration/**/*.js"], 
-  subscribers: ["src/subscriber/**/*.js"],
+  entities: ["src/entity/**/*.ts"], // chỉ cho TypeORM biết nơi tìm các entity
+  migrations: ["src/migration/**/*.ts"], // chú ý cái này, tránh duplicate
+  subscribers: ["src/subscriber/**/*.ts"],
   ssl: !!process.env.POSTGRES_SSL,
 });
 // Quy trình làm việc chuẩn với Migration
 // 1. Tạo entity
 // 2. Tạo migration : npx typeorm-ts-node-commonjs migration:generate ./src/migration/CreateUserTable -d src/data-source.ts 
 // 3. Chạy migration: npx typeorm-ts-node-commonjs migration:run -d src/data-source.ts
+
+
+
