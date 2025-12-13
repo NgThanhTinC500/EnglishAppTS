@@ -16,11 +16,29 @@ export class Question {
 
     // type : kieu du lieu trong DB
     // còn kiểu dữ liệu phía dưới là kiểu dữ liệu trong TS
-    @Column({ type: 'int' })
-    orderNumber: number;
+    // @Column({ type: 'int' })
+    // orderNumber: number;
 
     @Column({ type: 'text' })
     explanation: string;
+
+    // ===== THÊM CÁC TRƯỜNG CHO LISTENING =====
+
+    @Column({ type: "varchar", length: 255, nullable: true })
+    audioUrl: string; // URL file audio đã upload
+
+    @Column({ type: "varchar", length: 255, nullable: true })
+    audioFileName: string; // Tên file gốc
+
+    @Column({ type: "int", nullable: true })
+    audioDuration: number; // Độ dài audio (giây)
+
+    @Column({ type: "text", nullable: true })
+    transcript: string; // Bản transcript (nội dung audio)
+
+    @Column({ type: "boolean", default: false })
+    showTranscript: boolean; // Có hiển thị transcript không
+
 
     // nhieu cau hoi thuoc ve 1 bai thi
     // onDelete:Cascade => khi exam bi xoa thi question cung bi xoa

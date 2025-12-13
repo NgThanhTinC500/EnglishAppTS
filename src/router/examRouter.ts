@@ -3,7 +3,7 @@ import { UserController } from "../controller/userController";
 import { AuthController } from "../controller/authController";
 import { ExamController } from "../controller/examController";
 import { UserExamController } from "../controller/UserExamController";
-
+import { uploadAudioSingle } from "../middlewares/uploadAudio";
 const examRouter = Router();
 
 
@@ -28,6 +28,11 @@ examRouter.patch("/update-question/:id", ExamController.updateQuestion)
 examRouter.delete("/delete-question/:id", ExamController.deleteQuestion)
 // GET QUESTION BY EXAMID
 examRouter.get("/exams/:examId/questions", ExamController.getQuestionByExamID)
+
+
+// LISTENING 
+examRouter.post("/:id/question/listening",uploadAudioSingle, ExamController.addListeningQuestion)
+
 
 
 // ================ USER EXAM ROUTE =========================== //

@@ -1,4 +1,5 @@
 import * as express from "express";
+import * as path from "path";
 // import * as bodyParser from "body-parser";
 import { AppDataSource } from "./data-source";
 import userRouter from "./router/userRouter";
@@ -21,6 +22,12 @@ AppDataSource.initialize()
       windowMs: 60 * 60 * 1000,
       message: 'To many request from this IP, please try again'
     });
+    // Phục vụ thư mục public
+    //Mọi request bắt đầu bằng /uploads sẽ được Express 
+    // tự động tìm trong folder public và trả file tương ứng.
+    // dirname -> trỏ đến thư mục chứa folder hiện tại (src)
+    // tạo ra src/public
+    app.use('/uploads', express.static(path.join(__dirname, 'public')));
 
 
     app.use(express.json());

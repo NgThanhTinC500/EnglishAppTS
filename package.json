@@ -25,10 +25,11 @@
     "concurrently": "9.2.1",
     "crypto-js": "4.2.0",
     "dotenv": "17.2.3",
-    "express": "5.1.0",
+    "express": "^5.2.1",
     "express-rate-limit": "8.1.0",
     "jsonwebtoken": "9.0.2",
-    "nodemailer": "7.0.10",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.11",
     "nodemon": "3.1.10",
     "pg": "8.16.3",
     "pg-query-stream": "4.10.3",
@@ -37,24 +38,12 @@
     "typeorm": "0.3.27"
   },
   "scripts": {
-
-    "//": "Chạy server ở chế độ dev, chạy trực tiếp TS không cần build, chạy file src/index.ts",
-    "start:dev": "nodemon --exec ts-node src/index.ts",
-
-    "//": "Chạy server ở chế độ production, chạy file build/index.js đã được build từ TS sang JS",
-    "start:prod": "cross-env NODE_ENV=production node build/index.js",
-
-    "//": "rimraf build: xoá sạch thư mục build cũ",
-    "//": "tsc: chạy TypeScript Compiler để chuyển src/**/*.ts → build/**/*.js",
-    "build": "rimraf build && tsc",
-
-    "//": "npm run build: build lại code TypeScript. Sau đó chạy file node build/index.js",
-    "//": "Tức là: Build code, rồi chạy app bằng bản đã build.",
-    "start": "npm run build && node build/index.js",
-
     "//": "Chạy các lệnh TypeORM với ts-node và CommonJS",
+    "start:dev": "nodemon --exec ts-node src/index.ts",
+    "start:prod": "cross-env NODE_ENV=production node build/index.js",
+    "build": "rimraf build && tsc",
+    "start": "npm run build && node build/index.js",
     "typeorm": "typeorm-ts-node-commonjs",
-
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"",
     "lint:fix": "eslint 'src/**/*.{js,ts,tsx}' --fix"
   }
