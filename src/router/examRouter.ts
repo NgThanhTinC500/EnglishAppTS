@@ -32,8 +32,8 @@ examRouter.get("/exams/:examId/questions", ExamController.getQuestionByExamID)
 
 // LISTENING 
 examRouter.post("/:id/question/listening",uploadAudioSingle, ExamController.addListeningQuestion)
-
-
+examRouter.delete("/delete/listening/:id", ExamController.deleteQuestionListening)
+examRouter.patch("/update/listening/:id", uploadAudioSingle, ExamController.updateQuestionAudio)
 
 // ================ USER EXAM ROUTE =========================== //
 examRouter.post("/exams/:examId/start", UserExamController.startExam)
@@ -42,4 +42,5 @@ examRouter.post("/attempts/:attemptId/submit", UserExamController.submitExam)
 
 // LAY KET QUA
 examRouter.get("/attempts/:attemptId/result", UserExamController.getExamResult)
+
 export default examRouter;

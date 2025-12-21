@@ -166,7 +166,7 @@ export class ExamController {
                 });
                 return;
             }
-            
+
             console.log(req.file)
 
             // Parse answers từ JSON string (vì FormData gửi lên)
@@ -226,7 +226,101 @@ export class ExamController {
             });
         }
     }
+    static async deleteQuestionListening(req: Request, res: Response): Promise<void> {
+        try {
+            const questionId = parseInt(req.params.id);
 
+            if (isNaN(questionId)) {
+                res.status(400).json({
+                    success: false,
+                    message: "Invalid question ID"
+                });
+                return;
+            }
+
+            const deleted = await examService.deleteQuestionWithAudio(questionId);
+
+            if (!deleted) {
+                res.status(404).json({
+                    success: false,
+                    message: "Question not found"
+                });
+                return;
+            }
+
+            res.json({
+                success: true,
+                message: "Question deleted successfully"
+            });
+        } catch (error: any) {
+            res.status(500).json({
+                success: false,
+                message: error.message || "Internal server error"
+            });
+        }
+    }
+    static async updateQuestionAudio(req: Request, res: Response): Promise<void> {
+        try {
+            const questionId = parseInt(req.params.id);
+
+            if (isNaN(questionId)) {
+                res.status(400).json({
+                    success: false,
+                    message: "Invalid question ID"
+                });
+                return;
+            }
+
+            if (!req.file) {
+                res.status(400).json({
+                    success: false,
+                    message: "Audio file is required"
+                });
+                return;
+            }
+
+            const audioUrl = `/uploads/audio/${req.file.filename}`;
+            const audioDuration = req.body.audioDuration ? parseInt(req.body.audioDuration) : undefined;
+
+            const question = await examService.updateQuestionAudio(
+                questionId,
+                audioUrl,
+                req.file.originalname,
+                audioDuration
+            );
+
+            if (!question) {
+                // Xóa file vừa upload nếu question không tồn tại
+                fs.unlinkSync(req.file.path);
+
+                res.status(404).json({
+                    success: false,
+                    message: "Question not found"
+                });
+                return;
+            }
+
+            res.json({
+                success: true,
+                data: question,
+                message: "Audio updated successfully"
+            });
+        } catch (error: any) {
+            // Xóa file đã upload nếu có lỗi
+            if (req.file) {
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (e) {
+                    console.error("Failed to delete uploaded file:", e);
+                }
+            }
+
+            res.status(500).json({
+                success: false,
+                message: error.message || "Internal server error"
+            });
+        }
+    }
 
 
 }
