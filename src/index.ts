@@ -8,6 +8,7 @@ import * as dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import globalErrorHandler from './controller/errorController';
 import flashcardRouter from "./router/flashcardRouter";
+import blogRouter from "./router/blogRouter";
 dotenv.config();
 
 console.log('NODE_ENV =', process.env.NODE_ENV);
@@ -37,7 +38,7 @@ AppDataSource.initialize()
     app.use("/api/v1/", userRouter);
     app.use("/api/v1/flashcard", flashcardRouter);
     app.use("/api/v1/exam", examRouter);
-
+    app.use("/api/v1/blog", blogRouter);
 
 
     // start express server

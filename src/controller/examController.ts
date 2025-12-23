@@ -6,8 +6,6 @@ import * as fs from "fs";
 const examService = new ExamService();
 export class ExamController {
 
-
-
     static async createExams(req: Request, res: Response): Promise<void> {
         const examData = req.body;
         const exam = await examService.createExam(examData);
