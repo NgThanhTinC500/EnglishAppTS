@@ -22,7 +22,10 @@ export class HistoryController {
         const result = history.map((item) => ({
             attemptId: item.id,
             examName: item.exam?.title,
-            date: item.createdAt,
+            date: item.createdAt.toLocaleString("vi-VN", {
+                timeZone: "Asia/Ho_Chi_Minh"
+            }),
+
             score: item.score,
             timeSpent: item.timeSpent ? HistoryController.formatTime(item.timeSpent) : "00:00:00",
             status: item.status
