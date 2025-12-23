@@ -25,14 +25,13 @@ export class HistoryController {
             date: item.createdAt.toLocaleString("vi-VN", {
                 timeZone: "Asia/Ho_Chi_Minh"
             }),
-
             score: item.score,
             timeSpent: item.timeSpent ? HistoryController.formatTime(item.timeSpent) : "00:00:00",
             status: item.status
         }));
 
 
-        return res.json({ history: result });
+        res.json({ history: result });
     }
 
 }
