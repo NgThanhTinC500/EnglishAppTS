@@ -171,7 +171,7 @@ export class AuthService {
       password: user.password,
       passwordConfirm: user.passwordConfirm,
     });
-
+    
     this.createSendToken(user, 200, res);
   })
 

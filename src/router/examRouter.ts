@@ -4,6 +4,7 @@ import { AuthController } from "../controller/authController";
 import { ExamController } from "../controller/examController";
 import { UserExamController } from "../controller/UserExamController";
 import { uploadAudioSingle } from "../middlewares/uploadAudio";
+import { HistoryController } from "../controller/historyController";
 const examRouter = Router();
 
 
@@ -43,4 +44,5 @@ examRouter.post("/attempts/:attemptId/submit", UserExamController.submitExam)
 // LAY KET QUA
 examRouter.get("/attempts/:attemptId/result", UserExamController.getExamResult)
 
+examRouter.get("/history/:userId", HistoryController.getExamHistory);
 export default examRouter;

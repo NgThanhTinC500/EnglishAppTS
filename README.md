@@ -11,3 +11,9 @@ Steps to run this project:
 // 3. Chạy migration: npx typeorm-ts-node-commonjs migration:run -d src/data-source.ts -->
 
 <!-- npx typeorm-ts-node-commonjs migration:generate ./src/migration/CreateFlashCardTable -d src/data-source.ts -->
+
+
+<!-- // Quy trình làm việc chuẩn với Migration
+// 1. Tạo entity
+// 2. Tạo migration : npx typeorm-ts-node-commonjs migration:generate ./src/migration/CreateUserTable -d src/data-source.ts 
+// 3. Chạy migration: npx typeorm-ts-node-commonjs migration:run -d src/data-source.ts -->
