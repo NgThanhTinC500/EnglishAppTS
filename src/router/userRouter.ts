@@ -9,7 +9,7 @@ userRouter.post("/signup", AuthController.signup);
 userRouter.post("/login", AuthController.login);
 userRouter.post('/forgotPassword', AuthController.forgotPassword);
 userRouter.patch('/resetPassword/:token', AuthController.resetPassword);
-
+userRouter.get('/logout', AuthController.logout);
 
 
 userRouter.use(AuthController.protect);

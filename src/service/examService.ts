@@ -3,6 +3,8 @@ import { Exam } from "../entity/Exam";
 import { Repository } from "typeorm";
 import { Question } from "../entity/Question";
 import { Answer } from "../entity/Answer";
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class ExamService {
     private examRepository: Repository<Exam>;
@@ -58,7 +60,7 @@ export class ExamService {
     async addQuestion(questionData: {
         examId: number;
         questionText: string;
-        orderNumber: number;
+        // orderNumber: number;
         explanation?: string;
         answers: Array<{
             answerText: string;
@@ -78,7 +80,7 @@ export class ExamService {
         // 2. Tạo question
         const question = this.questionRepository.create({
             examId: questionData.examId,
-            orderNumber: questionData.orderNumber,
+            // orderNumber: questionData.orderNumber,
             questionText: questionData.questionText,
             explanation: questionData.explanation
         });
@@ -129,13 +131,134 @@ export class ExamService {
         return await this.examRepository.findOne({
             where: { id: examId },
             relations: ["questions", "questions.answers"],
-            order: {
-                questions: {
-                    orderNumber: "ASC"
-                }
-            }
+            // order: {
+            //     questions: {
+            //         orderNumber: "ASC"
+            //     }
+            // }
         });
     }
+
+
+    // Thêm câu hỏi listening với audio
+    async addListeningQuestion(questionData: {
+        examId: number;
+        questionText: string;
+        // orderNumber: number;
+        explanation?: string;
+        audioUrl: string;
+        audioFileName: string;
+        // audioDuration?: number;
+        transcript?: string;
+        showTranscript?: boolean;
+        answers: Array<{
+            answerText: string;
+            option: string;
+            isCorrect: boolean;
+        }>;
+    }): Promise<Question> {
+        const exam = await this.examRepository.findOne({
+            where: { id: questionData.examId }
+        });
+
+        if (!exam) {
+            throw new Error("Exam not found");
+        }
+
+        // Tạo question với audio
+        const question = this.questionRepository.create({
+            examId: questionData.examId,
+            questionText: questionData.questionText,
+            // orderNumber: questionData.orderNumber,
+            explanation: questionData.explanation,
+            audioUrl: questionData.audioUrl,
+            audioFileName: questionData.audioFileName,
+            // audioDuration: questionData.audioDuration,
+            transcript: questionData.transcript,
+            showTranscript: questionData.showTranscript || false
+        });
+
+        const savedQuestion = await this.questionRepository.save(question);
+
+        // Tạo các đáp án
+        const answers = questionData.answers.map(ans =>
+            this.answerRepository.create({
+                questionId: savedQuestion.id,
+                answerText: ans.answerText,
+                option: ans.option,
+                isCorrect: ans.isCorrect
+            })
+        );
+
+        await this.answerRepository.save(answers);
+
+        // Load lại câu hỏi với đáp án
+        return await this.questionRepository.findOne({
+            where: { id: savedQuestion.id },
+            relations: ["answers"]
+        });
+    }
+
+    // Xóa câu hỏi (bao gồm xóa file audio nếu có)
+    async deleteQuestionWithAudio(questionId: number): Promise<boolean> {
+        const question = await this.questionRepository.findOne({
+            where: { id: questionId }
+        });
+
+        if (!question) {
+            return false;
+        }
+
+        // Xóa file audio nếu có
+        if (question.audioUrl) {
+            try {
+                const filePath = path.join(".", question.audioUrl);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    console.log(`Deleted audio file: ${filePath}`);
+                }
+            } catch (error) {
+                console.error(`Failed to delete audio file: ${error}`);
+            }
+        }
+
+        const result = await this.questionRepository.delete(questionId);
+        return result.affected > 0;
+    }
+    async updateQuestionAudio(
+        questionId: number,
+        audioUrl: string,
+        audioFileName: string,
+        audioDuration?: number
+    ): Promise<Question | null> {
+        const question = await this.questionRepository.findOne({
+            where: { id: questionId }
+        });
+
+        if (!question) {
+            return null;
+        }
+
+        // Xóa audio cũ nếu có
+        if (question.audioUrl && question.audioUrl !== audioUrl) {
+            try {
+                const oldFilePath = path.join(".", question.audioUrl);
+                if (fs.existsSync(oldFilePath)) {
+                    fs.unlinkSync(oldFilePath);
+                }
+            } catch (error) {
+                console.error(`Failed to delete old audio: ${error}`);
+            }
+        }
+
+        // Cập nhật audio mới
+        question.audioUrl = audioUrl;
+        question.audioFileName = audioFileName;
+        question.audioDuration = audioDuration;
+
+        return await this.questionRepository.save(question);
+    }
+
 
 
 }

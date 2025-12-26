@@ -171,7 +171,7 @@ export class AuthService {
       password: user.password,
       passwordConfirm: user.passwordConfirm,
     });
-
+    
     this.createSendToken(user, 200, res);
   })
 
@@ -187,7 +187,9 @@ export class AuthService {
 
     // 3) Send it to user's email
     try {
-      const resetURL = `${req.protocol}://${req.get('host')}/api/v1/users/resetPassword/${resetToken}`;
+      // const resetURL = `${req.protocol}://${req.get('host')}/api/v1/users/resetPassword/${resetToken}`;
+      const resetURL = `${req.protocol}://${req.get('host')}/reset-password/${resetToken}`;
+
       await sendEmail({
         email: user.email,
         subject: 'Your password reset token (valid for 10 min)',

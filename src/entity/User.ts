@@ -3,7 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, Unique, BeforeInsert, BeforeUpd
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { FlashcardDeck } from "./FlashcardDeck";
-
+import { Blog } from "./Blog";
 
 export enum UserRole {
     ADMIN = "admin",
@@ -59,6 +59,11 @@ export class User {
     // phải trỏ vào tên quan hệ
     @OneToMany(() => FlashcardDeck, (flashcarddeck) => flashcarddeck.user)
     flashcarddecks: FlashcardDeck[];
+
+    // (blog) => blog.author 
+    // blog.author  chính là thuộc tính user trong entity Blog
+    @OneToMany(() => Blog, (blog) => blog.author)
+    blogs: Blog[];
 
 
     @BeforeInsert()

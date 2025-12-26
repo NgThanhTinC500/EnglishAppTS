@@ -35,7 +35,7 @@ export class UserExamService {
                 questions: exam.questions.map(q => ({
                     id: q.id,
                     questionText: q.questionText,
-                    orderNumber: q.orderNumber,
+                    // orderNumber: q.orderNumber,
                     answers: q.answers.map(a => ({
                         id: a.id,
                         option: a.option,           // A / B / C / D
