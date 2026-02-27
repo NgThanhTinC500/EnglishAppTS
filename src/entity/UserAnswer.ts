@@ -2,39 +2,55 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDa
 import { UserExamAttempt } from "./UserExamAttempt";
 import { Question } from "./Question";
 import { Answer } from "./Answer";
+import { IsBoolean, IsInt, IsOptional, Min } from "class-validator";
 
 @Entity("user_answers")
 export class UserAnswer {
+
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column({ type: "int" })
+    @IsInt({ message: "attemptId must be an integer" })
+    @Min(1, { message: "attemptId must be greater than 0" })
     attemptId: number;
 
     @Column({ type: "int" })
+    @IsInt({ message: "questionId must be an integer" })
+    @Min(1, { message: "questionId must be greater than 0" })
     questionId: number;
 
     @Column({ type: "int", nullable: true })
-    answerId: number; // ID của đáp án user chọn
+    @IsOptional()
+    @IsInt({ message: "answerId must be an integer" })
+    @Min(1, { message: "answerId must be greater than 0" })
+    answerId: number;
 
     @Column({ type: "boolean", default: false })
+    @IsBoolean()
     isCorrect: boolean;
 
     @Column({ type: "int", nullable: true })
-    timeSpent: number; // Thời gian làm câu này (giây)
+    @IsOptional()
+    @IsInt()
+    @Min(0, { message: "timeSpent cannot be negative" })
+    timeSpent: number;
 
-    // nhieu user thuộc về userExamAttempt
-    @ManyToOne(() => UserExamAttempt, (attempt) => attempt.userAnswers, { onDelete: "CASCADE" })
+    // ===== RELATIONS =====
+
+    @ManyToOne(
+        () => UserExamAttempt,
+        attempt => attempt.userAnswers,
+        { onDelete: "CASCADE" }
+    )
     @JoinColumn({ name: "attemptId" })
     attempt: UserExamAttempt;
 
-    // Bảng UserAnswer sẽ nối với bảng Question, 
-    // ở bảng question sẽ có thuộc tính (attribute) tên userAnswer
-    // đó là sự móc nối của bên kia
-    @ManyToOne(() => Question, (question) => question.userAnswers)
+    @ManyToOne(
+        () => Question,
+        question => question.userAnswers
+    )
     @JoinColumn({ name: "questionId" })
-    // khi truy vấn, sẽ đổ dữ liệu vào biến question
-    // ví dụ như là khi relation
     question: Question;
 
     @ManyToOne(() => Answer, { nullable: true })

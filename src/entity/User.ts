@@ -1,9 +1,10 @@
-import { IsNotEmpty, MinLength } from "class-validator"
+import { IsEmail, IsEnum, IsNotEmpty,  IsUrl, MaxLength, MinLength, IsOptional } from "class-validator"
 import { Entity, PrimaryGeneratedColumn, Column, Unique, BeforeInsert, BeforeUpdate, OneToMany } from "typeorm"
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { FlashcardDeck } from "./FlashcardDeck";
 import { Blog } from "./Blog";
+
 
 export enum UserRole {
     ADMIN = "admin",
@@ -12,27 +13,32 @@ export enum UserRole {
 @Entity()
 @Unique(["email"])
 export class User {
+
     @PrimaryGeneratedColumn("uuid")
     id: string
 
     @Column()
     @IsNotEmpty({ message: "Name is required" })
     @MinLength(6, { message: "Name is too short" })
+    @MaxLength(50, { message: 'Name is too long' })
     name: string
 
     @Column()
     @IsNotEmpty({ message: "Email is required" })
+    @IsEmail({}, { message: "Email is not valid" })
     email: string
 
-    @Column({ nullable: true })
-    photo: string
+    @Column()
+    @IsOptional()
+    @IsUrl()
+    photo: string;
 
     @Column({ select: false })
     @IsNotEmpty({ message: "Password is required" })
+    @MinLength(8, { message: "Password must be at least 8 characters" })
     password: string
 
     @Column({ nullable: true })
-    @IsNotEmpty({ message: "PasswordConfirm is required" })
     passwordConfirm: string
 
     @Column({
@@ -40,6 +46,7 @@ export class User {
         enum: UserRole,
         default: UserRole.USER,
     })
+    @IsEnum(UserRole, { message: "Role must be either 'admin' or 'user'" })
     role: UserRole
 
 
@@ -116,6 +123,4 @@ export class User {
         }
         return false;
     }
-
-
 }

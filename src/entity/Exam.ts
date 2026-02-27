@@ -1,9 +1,17 @@
-import { IsNotEmpty, MinLength } from "class-validator"
-import { Entity, PrimaryGeneratedColumn, Column, Unique, BeforeInsert, BeforeUpdate, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm"
+import {
+    IsNotEmpty,
+    MinLength,
+    IsInt,
+    Min,
+    IsBoolean,
+    IsOptional
+} from "class-validator";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm"
 import { Question } from "./Question";
 import { UserExamAttempt } from "./UserExamAttempt";
 @Entity("exams")
 
+@Entity("exams")
 export class Exam {
     @PrimaryGeneratedColumn()
     id: number;
@@ -11,31 +19,35 @@ export class Exam {
     @Column()
     @IsNotEmpty({ message: "Title is required" })
     @MinLength(3, { message: "Title is too short" })
-    title: string
+    title: string;
 
-    @Column({ type: 'text', nullable: true })
-    description: string
+    @Column({ type: "text", nullable: true })
+    @IsOptional()
+    description: string;
 
     @Column({ type: "int" })
+    @IsInt({ message: "totalQuestions must be integer" })
+    @Min(1, { message: "totalQuestions must be > 0" })
     totalQuestions: number;
 
-    @Column({ type: "int", default: 60 }) // in minutes
+    @Column({ type: "int", default: 60 })
+    @IsInt()
+    @Min(1)
     duration: number;
 
     @Column({ type: "boolean", default: true })
-    isActive: boolean
+    @IsBoolean()
+    isActive: boolean;
 
-    // question : đại diện cho bản ghi Question BẤT KÌ
-    // question.exam : đại diện cho exam trong bản ghi Question
     @OneToMany(() => Question, question => question.exam)
-    questions: Question[]; // 1 bai thi gom nhieu cau hoi
+    questions: Question[];
 
-    @OneToMany(() => UserExamAttempt, (attempt) => attempt.exam)
-    attempts: UserExamAttempt[]; // 1 bai thi gom nhieu lan lam
-    
+    @OneToMany(() => UserExamAttempt, attempt => attempt.exam)
+    attempts: UserExamAttempt[];
+
     @CreateDateColumn()
     createdAt: Date;
 
     @UpdateDateColumn()
     updatedAt: Date;
-}   
+}
