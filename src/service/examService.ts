@@ -2,30 +2,53 @@ import { AppDataSource } from "../data-source";
 import { Exam } from "../entity/Exam";
 import { Repository } from "typeorm";
 import { Question } from "../entity/Question";
-import { Answer } from "../entity/Answer";
+import { QuestionOption } from "../entity/QuestionOption";
 import * as fs from 'fs';
 import * as path from 'path';
+import { Topic } from "../entity/Topic";
 
 export class ExamService {
     private examRepository: Repository<Exam>;
     private questionRepository: Repository<Question>
-    private answerRepository: Repository<Answer>
+    private answerRepository: Repository<QuestionOption>
+    private topicRepository: Repository<Topic>
     constructor() {
         this.examRepository = AppDataSource.getRepository(Exam);
         this.questionRepository = AppDataSource.getRepository(Question);
-        this.answerRepository = AppDataSource.getRepository(Answer);
+        this.answerRepository = AppDataSource.getRepository(QuestionOption);
+        this.topicRepository = AppDataSource.getRepository(Topic)
     }
 
     // Partial
     // tham số examData chứa một phần field của entity Exam
-    async createExam(examData: Partial<Exam>) {
-        const exam = this.examRepository.create(examData);
+    async createExam(topicId: number, examData: any) {
+        const topic = await this.topicRepository.findOne({
+            where: { id: topicId }
+        });
+        if (!topic) throw new Error("Topic not found");
+
+        const {
+            title,
+            description,
+            totalQuestions,
+            duration
+        } = examData;
+
+        const exam = this.examRepository.create({
+            title,
+            description,
+            totalQuestions,
+            duration,
+            topicId
+        });
+
         return this.examRepository.save(exam);
     }
 
-    async getAllExams() {
+    async getAllExams(topicId: number) {
         return await this.examRepository.find({
-            where: { isActive: true },
+            where: { topicId: topicId, isActive: true },
+            order: { createdAt: "DESC" }
             // relations: ["questions", "questions.answers"],
         });
     }
@@ -33,13 +56,12 @@ export class ExamService {
     // Service
     async getExamById(examId: number): Promise<Exam | null> {
         const exam = await this.examRepository.findOne({
-            where: { id: examId },
-            relations: ["questions", "questions.answers"],
+            where: { id: examId }
         });
         return exam
     }
 
-    async deleteExam(id: string) {
+    async deleteExam(id: number) {
         const result = await this.examRepository.update(id, { isActive: false });
         return result
     }
@@ -51,64 +73,73 @@ export class ExamService {
         if (!exam) {
             return null;
         }
+        const allowedFields = ["title", "description", "totalQuestions", "duration"];
+
+        const filteredData = Object.fromEntries(
+            // Object.entries(updateData) — chuyển object thành mảng [key, value]
+            Object.entries(updateData).filter(([key]) =>
+                allowedFields.includes(key)
+            )
+        );
+
         // copy từ updateData vào exam
-        Object.assign(exam, updateData);
+        Object.assign(exam, filteredData);
         return await this.examRepository.save(exam);
     }
 
     // CREATE QUESTION
-    async addQuestion(questionData: {
-        examId: number;
-        questionText: string;
-        // orderNumber: number;
-        explanation?: string;
-        answers: Array<{
-            answerText: string;
-            option: string;
-            isCorrect: boolean;
-        }>;
-    }): Promise<Question> {
-        // 1. Lấy exam
-        const exam = await this.examRepository.findOne({
-            where: { id: questionData.examId }
-        });
+    // async addQuestion(questionData: {
+    //     examId: number;
+    //     questionText: string;
+    //     // orderNumber: number;
+    //     explanation?: string;
+    //     answers: Array<{
+    //         answerText: string;
+    //         option: string;
+    //         isCorrect: boolean;
+    //     }>;
+    // }): Promise<Question> {
+    //     // 1. Lấy exam
+    //     const exam = await this.examRepository.findOne({
+    //         where: { id: questionData.examId }
+    //     });
 
-        if (!exam) {
-            throw new Error("Exam not found");
-        }
+    //     if (!exam) {
+    //         throw new Error("Exam not found");
+    //     }
 
-        // 2. Tạo question
-        const question = this.questionRepository.create({
-            examId: questionData.examId,
-            // orderNumber: questionData.orderNumber,
-            questionText: questionData.questionText,
-            explanation: questionData.explanation
-        });
+    //     // 2. Tạo question
+    //     const question = this.questionRepository.create({
+    //         examId: questionData.examId,
+    //         // orderNumber: questionData.orderNumber,
+    //         questionText: questionData.questionText,
+    //         explanation: questionData.explanation
+    //     });
 
-        // 3. Lưu question
-        const savedQuestion = await this.questionRepository.save(question);
+    //     // 3. Lưu question
+    //     const savedQuestion = await this.questionRepository.save(question);
 
-        // 4. Tạo đáp án
-        // mình lấy đáp án từ phần req.body
-        // duyệt qua từng phần tử trong mảng answers
-        // với mỗi phần tử tạo 1 entity
-        const answers = questionData.answers.map(ans =>
-            this.answerRepository.create({
-                questionId: savedQuestion.id,
-                answerText: ans.answerText,
-                option: ans.option,
-                isCorrect: ans.isCorrect
-            })
-        );
+    //     // 4. Tạo đáp án
+    //     // mình lấy đáp án từ phần req.body
+    //     // duyệt qua từng phần tử trong mảng answers
+    //     // với mỗi phần tử tạo 1 entity
+    //     // const answers = questionData.answers.map(ans =>
+    //     //     this.answerRepository.create({
+    //     //         questionId: savedQuestion.id,
+    //     //         answerText: ans.answerText,
+    //     //         option: ans.option,
+    //     //         isCorrect: ans.isCorrect
+    //     //     })
+    //     // );
 
-        await this.answerRepository.save(answers);
+    //     await this.answerRepository.save(answers);
 
-        // 5. Load lại question vừa tạo với danh sách answers của nó
-        return await this.questionRepository.findOne({
-            where: { id: savedQuestion.id },
-            relations: ["answers"]
-        });
-    }
+    //     // 5. Load lại question vừa tạo với danh sách answers của nó
+    //     return await this.questionRepository.findOne({
+    //         where: { id: savedQuestion.id },
+    //         relations: ["answers"]
+    //     });
+    // }
 
     async updateQuestion(questionId: number, updateData: Partial<Question>) {
         const question = await this.questionRepository.findOne({
@@ -141,63 +172,63 @@ export class ExamService {
 
 
     // Thêm câu hỏi listening với audio
-    async addListeningQuestion(questionData: {
-        examId: number;
-        questionText: string;
-        // orderNumber: number;
-        explanation?: string;
-        audioUrl: string;
-        audioFileName: string;
-        // audioDuration?: number;
-        transcript?: string;
-        showTranscript?: boolean;
-        answers: Array<{
-            answerText: string;
-            option: string;
-            isCorrect: boolean;
-        }>;
-    }): Promise<Question> {
-        const exam = await this.examRepository.findOne({
-            where: { id: questionData.examId }
-        });
+    // async addListeningQuestion(questionData: {
+    //     examId: number;
+    //     questionText: string;
+    //     // orderNumber: number;
+    //     explanation?: string;
+    //     audioUrl: string;
+    //     audioFileName: string;
+    //     // audioDuration?: number;
+    //     transcript?: string;
+    //     showTranscript?: boolean;
+    //     answers: Array<{
+    //         answerText: string;
+    //         option: string;
+    //         isCorrect: boolean;
+    //     }>;
+    // }): Promise<Question> {
+    //     const exam = await this.examRepository.findOne({
+    //         where: { id: questionData.examId }
+    //     });
 
-        if (!exam) {
-            throw new Error("Exam not found");
-        }
+    //     if (!exam) {
+    //         throw new Error("Exam not found");
+    //     }
 
-        // Tạo question với audio
-        const question = this.questionRepository.create({
-            examId: questionData.examId,
-            questionText: questionData.questionText,
-            // orderNumber: questionData.orderNumber,
-            explanation: questionData.explanation,
-            audioUrl: questionData.audioUrl,
-            audioFileName: questionData.audioFileName,
-            // audioDuration: questionData.audioDuration,
-            transcript: questionData.transcript,
-            showTranscript: questionData.showTranscript || false
-        });
+    //     // Tạo question với audio
+    //     const question = this.questionRepository.create({
+    //         examId: questionData.examId,
+    //         questionText: questionData.questionText,
+    //         // orderNumber: questionData.orderNumber,
+    //         explanation: questionData.explanation,
+    //         audioUrl: questionData.audioUrl,
+    //         audioFileName: questionData.audioFileName,
+    //         // audioDuration: questionData.audioDuration,
+    //         transcript: questionData.transcript,
+    //         showTranscript: questionData.showTranscript || false
+    //     });
 
-        const savedQuestion = await this.questionRepository.save(question);
+    //     const savedQuestion = await this.questionRepository.save(question);
 
-        // Tạo các đáp án
-        const answers = questionData.answers.map(ans =>
-            this.answerRepository.create({
-                questionId: savedQuestion.id,
-                answerText: ans.answerText,
-                option: ans.option,
-                isCorrect: ans.isCorrect
-            })
-        );
+    //     // Tạo các đáp án
+    //     const answers = questionData.answers.map(ans =>
+    //         this.answerRepository.create({
+    //             questionId: savedQuestion.id,
+    //             content: ans.content,
+    //             option: ans.option,
+    //             isCorrect: ans.isCorrect
+    //         })
+    //     );
 
-        await this.answerRepository.save(answers);
+    //     await this.answerRepository.save(answers);
 
-        // Load lại câu hỏi với đáp án
-        return await this.questionRepository.findOne({
-            where: { id: savedQuestion.id },
-            relations: ["answers"]
-        });
-    }
+    //     // Load lại câu hỏi với đáp án
+    //     return await this.questionRepository.findOne({
+    //         where: { id: savedQuestion.id },
+    //         relations: ["answers"]
+    //     });
+    // }
 
     // Xóa câu hỏi (bao gồm xóa file audio nếu có)
     async deleteQuestionWithAudio(questionId: number): Promise<boolean> {

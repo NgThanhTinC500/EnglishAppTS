@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { FlashcardDeck } from "./FlashcardDeck";
 import { Blog } from "./Blog";
+import { Attempt } from "./Attempt";
 
 
 export enum UserRole {
@@ -28,7 +29,7 @@ export class User {
     @IsEmail({}, { message: "Email is not valid" })
     email: string
 
-    @Column()
+    @Column({nullable: true})
     @IsOptional()
     @IsUrl()
     photo: string;
@@ -72,6 +73,8 @@ export class User {
     @OneToMany(() => Blog, (blog) => blog.author)
     blogs: Blog[];
 
+    @OneToMany(() => Attempt, (attempt) => attempt.user)
+    attempts: Attempt[]
 
     @BeforeInsert()
     @BeforeUpdate() // chỉ trigger khi dùng save() 

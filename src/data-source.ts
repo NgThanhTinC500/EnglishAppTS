@@ -27,7 +27,7 @@ export const AppDataSource = new DataSource({
 });
 // Quy trình làm việc chuẩn với Migration
 // 1. Tạo entity
-// 2. Tạo migration : npx typeorm-ts-node-commonjs migration:generate ./src/migration/CreateUserTable -d src/data-source.ts 
+// 2. Tạo migration : npx typeorm-ts-node-commonjs migration:generate ./src/migration/InitDB -d src/data-source.ts 
 // 3. Chạy migration: npx typeorm-ts-node-commonjs migration:run -d src/data-source.ts
 
 

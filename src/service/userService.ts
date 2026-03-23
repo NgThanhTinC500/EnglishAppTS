@@ -1,10 +1,12 @@
-import { Repository, UpdateResult } from "typeorm";
+import { UpdateResult } from "typeorm";
 import { FindOptionsWhere } from "typeorm";
 import { User } from "../entity/User";
+import { AppDataSource } from "../data-source";
+import { AppError } from "../utils/appError";
+
 export class UserService {
-  constructor(
-    private readonly userRepository: Repository<User>
-  ) { }
+
+  private userRepository = AppDataSource.getRepository(User);
 
   async createUser(data: Partial<User>) {
     const user = this.userRepository.create(data);
@@ -36,23 +38,18 @@ export class UserService {
 
   // Partial: chỉ cần truyền một số trường cần cập nhật
   async updateUser(id: string, data: Partial<User>) {
-    const { password, passwordConfirm } = data;
-    console.log("================================")
-    console.log(password)
-    console.log(passwordConfirm)
-
+    const { name } = data;
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
-      throw new Error('User not found');
+      throw new AppError("No user found with that ID", 404);
     }
-    if (password) user.password = password;
-    if (passwordConfirm !== undefined) user.passwordConfirm = passwordConfirm;
+    if (name) user.name = name;
     await this.userRepository.save(user);
     return await this.findOne(id);
   }
 
-  async deleteUser(id: number) {
-    await this.userRepository.update(id, {isActive: false});
+  async deleteUser(id: string) {
+    await this.userRepository.update(id, { isActive: false });
     return { message: "User deleted successfully" };
   }
 
@@ -80,7 +77,7 @@ export class UserService {
   }
 
   // chỉ cần cập nhật một số trường
-  async saveResetToken(user: User) : Promise<UpdateResult> {
+  async saveResetToken(user: User): Promise<UpdateResult> {
     return await this.userRepository.update(user.id, {
       passwordResetToken: user.passwordResetToken,
       passwordResetExpires: user.passwordResetExpires,

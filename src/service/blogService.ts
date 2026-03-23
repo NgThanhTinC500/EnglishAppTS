@@ -1,49 +1,48 @@
-import { AppDataSource } from "../data-source";
-import { Repository } from "typeorm";
-import * as fs from 'fs';
-import * as path from 'path';
-import { Blog } from "../entity/Blog";
+import { Repository } from 'typeorm';
+import { AppDataSource } from '../data-source';
+import { Blog } from '../entity/Blog';
+import { AppError } from '../utils/appError';
 
 export class BlogService {
-    private blogRepository: Repository<Blog>
+    private blogRepository: Repository<Blog>;
 
     constructor() {
         this.blogRepository = AppDataSource.getRepository(Blog);
     }
 
-    async createBlog(blogData: Partial<Blog>) {
+    async createBlog(blogData: Partial<Blog>): Promise<Blog> {
         const blog = this.blogRepository.create(blogData);
         return this.blogRepository.save(blog);
     }
 
-    async getAllBlogs() {
-        return await this.blogRepository.find({
+    async getAllBlogs(): Promise<Blog[]> {
+        return this.blogRepository.find({
             where: { isPublished: true },
-            relations: ["author"],
+            relations: ['author'],
         });
     }
-    async updateBlog(blogId: number, updateData: Partial<Blog>) {
+
+    async getBlogById(blogId: number): Promise<Blog> {
         const blog = await this.blogRepository.findOne({
-            where: { id: blogId }
+            where: { id: blogId },
+            relations: ['author'],
         });
         if (!blog) {
-            return null;
+            throw new AppError('Blog not found', 404);
         }
-        // copy từ updateData vào blog
+        return blog;
+    }
+
+    async updateBlog(blogId: number, updateData: Partial<Blog>): Promise<Blog> {
+        const blog = await this.getBlogById(blogId); // ném AppError nếu không tìm thấy
         Object.assign(blog, updateData);
-        return await this.blogRepository.save(blog);
+        return this.blogRepository.save(blog);
     }
 
-    async deleteBlog(id: number) {
-        const result = await this.blogRepository.update(id, { isPublished: false });
-
+    async deleteBlog(blogId: number): Promise<void> {
+        const result = await this.blogRepository.update(blogId, { isPublished: false });
         if (result.affected === 0) {
-            return null; // Không có blog nào bị ảnh hưởng → ID không tồn tại
+            throw new AppError('Blog not found', 404);
         }
-
-        return true;
     }
-
-
-
 }

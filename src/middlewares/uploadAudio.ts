@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 });
 
 // File filter - chỉ cho phép audio files
-const fileFilter = (req: any, file: multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     // Các định dạng audio cho phép
     const allowedMimes = [
         'audio/mpeg',      // .mp3

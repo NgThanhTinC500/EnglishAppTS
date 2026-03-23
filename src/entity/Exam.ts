@@ -6,15 +6,31 @@ import {
     IsBoolean,
     IsOptional
 } from "class-validator";
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm"
-import { Question } from "./Question";
-import { UserExamAttempt } from "./UserExamAttempt";
-@Entity("exams")
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    UpdateDateColumn,
+    OneToMany,
+    ManyToOne,
+    JoinColumn
+} from "typeorm";
+import { ExamQuestion } from "./ExamQuestion";
+import { Attempt } from "./Attempt";
+import { Topic } from "./Topic";
 
 @Entity("exams")
 export class Exam {
     @PrimaryGeneratedColumn()
     id: number;
+
+    @Column()
+    topicId: number;
+
+    @ManyToOne(() => Topic, topic => topic.exams, { onDelete: "CASCADE" })
+    @JoinColumn({ name: "topicId" })
+    topic: Topic;
 
     @Column()
     @IsNotEmpty({ message: "Title is required" })
@@ -33,17 +49,17 @@ export class Exam {
     @Column({ type: "int", default: 60 })
     @IsInt()
     @Min(1)
-    duration: number;
+    duration: number | null;
 
     @Column({ type: "boolean", default: true })
     @IsBoolean()
     isActive: boolean;
 
-    @OneToMany(() => Question, question => question.exam)
-    questions: Question[];
+    @OneToMany(() => ExamQuestion, eq => eq.exam)
+    examQuestions: ExamQuestion[];
 
-    @OneToMany(() => UserExamAttempt, attempt => attempt.exam)
-    attempts: UserExamAttempt[];
+    @OneToMany(() => Attempt, attempt => attempt.exam)
+    attempts: Attempt[];
 
     @CreateDateColumn()
     createdAt: Date;
