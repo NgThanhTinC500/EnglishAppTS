@@ -8,19 +8,11 @@ import { Exam } from "../entity/Exam";
 import { ExamQuestion } from "../entity/ExamQuestion";
 
 export class QuestionService {
-    private questionRepository: Repository<Question>;
-    private optionRepository: Repository<QuestionOption>;
-    private topicRepository: Repository<Topic>;
-    private examRepository: Repository<Exam>;
-    private examQuestionRepository: Repository<ExamQuestion>;
-
-    constructor() {
-        this.questionRepository = AppDataSource.getRepository(Question);
-        this.optionRepository = AppDataSource.getRepository(QuestionOption);
-        this.topicRepository = AppDataSource.getRepository(Topic);
-        this.examRepository = AppDataSource.getRepository(Exam);
-        this.examQuestionRepository = AppDataSource.getRepository(ExamQuestion);
-    }
+    private questionRepository = AppDataSource.getRepository(Question);
+    private optionRepository = AppDataSource.getRepository(QuestionOption);
+    private topicRepository = AppDataSource.getRepository(Topic);
+    private examRepository = AppDataSource.getRepository(Exam);
+    private examQuestionRepository = AppDataSource.getRepository(ExamQuestion);
 
     async createQuestion(data: {
         content: string;

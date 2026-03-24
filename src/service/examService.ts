@@ -6,18 +6,19 @@ import { QuestionOption } from "../entity/QuestionOption";
 import * as fs from 'fs';
 import * as path from 'path';
 import { Topic } from "../entity/Topic";
+import { AppError } from "../utils/appError";
 
 export class ExamService {
-    private examRepository: Repository<Exam>;
-    private questionRepository: Repository<Question>
-    private answerRepository: Repository<QuestionOption>
-    private topicRepository: Repository<Topic>
-    constructor() {
-        this.examRepository = AppDataSource.getRepository(Exam);
-        this.questionRepository = AppDataSource.getRepository(Question);
-        this.answerRepository = AppDataSource.getRepository(QuestionOption);
-        this.topicRepository = AppDataSource.getRepository(Topic)
-    }
+    private examRepository = AppDataSource.getRepository(Exam);
+    private questionRepository = AppDataSource.getRepository(Question);
+    private answerRepository = AppDataSource.getRepository(QuestionOption);
+    private topicRepository = AppDataSource.getRepository(Topic)
+    // constructor() {
+    //     this.examRepository =
+    //     this.questionRepository
+    //     this.answerRepository
+    //     this.topicRepository
+    // }
 
     // Partial
     // tham số examData chứa một phần field của entity Exam
@@ -54,24 +55,39 @@ export class ExamService {
     }
 
     // Service
-    async getExamById(examId: number): Promise<Exam | null> {
+    async getExamDetail(topicId: number, examId: number): Promise<Exam> {
         const exam = await this.examRepository.findOne({
-            where: { id: examId }
+            where: { topicId: topicId, id: examId },
+            relations: {
+                examQuestions: {
+                    question: true
+                }
+            }
         });
+        if (!exam) {
+            throw new AppError("Ko co exam", 404)
+        }
         return exam
     }
 
-    async deleteExam(id: number) {
-        const result = await this.examRepository.update(id, { isActive: false });
-        return result
-    }
-
-    async updateExam(examId: number, updateData: Partial<Exam>) {
+    async toggleExamActive(topicId: number, examId: number) {
         const exam = await this.examRepository.findOne({
-            where: { id: examId }
+            where: { topicId, id: examId }
         });
         if (!exam) {
-            return null;
+            throw new AppError("Ko co exam", 404);
+        }
+        exam.isActive = !exam.isActive;
+
+        return await this.examRepository.save(exam);
+    }
+
+    async updateExam(topicId: number, examId: number, updateData: Partial<Exam>) {
+        const exam = await this.examRepository.findOne({
+            where: { topicId, id: examId }
+        });
+        if (!exam) {
+            throw new AppError("Ko co exam", 404);
         }
         const allowedFields = ["title", "description", "totalQuestions", "duration"];
 

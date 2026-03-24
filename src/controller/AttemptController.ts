@@ -26,5 +26,16 @@ export class AttemptController {
             message: "create answer"
         })
     })
+    submitExam = catchAsync(async (req: Request, res: Response) => {
+        const attemptId = Number(req.params.attemptId);
+        const userId = req.user.id
+        const examId = Number(req.params.examId)
+        const result = await this.attemptService.submitExam(attemptId, userId, examId)
+        res.status(200).json({
+            success: true,
+            data: result,
+            message: "Hoan thanh bai thi"
+        })
+    })
 
 }

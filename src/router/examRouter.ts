@@ -14,15 +14,15 @@ examRouter.use(authController.protect);
 
 
 // CREATE EXAM
-examRouter.post("/exams", examController.createExams);
-// GET ALL EXAM
-examRouter.get("/exams", examController.getAllExams)
-// GET EXAM BY ID
-examRouter.get("/exams/:id", examController.getExamById)
-// UPDATE EXAM
-examRouter.patch("/exams/:id", examController.updateExam)
-// DETELE EXAM
-examRouter.patch("/exams/:id/status", examController.deleteExam)
+// examRouter.post("/exams", examController.createExams);
+// // GET ALL EXAM
+// examRouter.get("/exams", examController.getAllExams)
+// // GET EXAM BY ID
+// examRouter.get("/exams/:id", examController.getExamById)
+// // UPDATE EXAM
+// examRouter.patch("/exams/:id", examController.updateExam)
+// // DETELE EXAM
+// examRouter.patch("/exams/:id/status", examController.deleteExam)
 
 
 // examRouter.patch("/update-question/:id", examController.updateQuestion)

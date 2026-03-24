@@ -32,16 +32,10 @@ export class ExamController {
     })
 
     // Controller
-    getExamById = catchAsync(async (req: Request, res: Response): Promise<void> => {
-        const examId = Number(req.params.id)
-        const exam = await this.examService.getExamById(examId)
-        if (!exam) {
-            res.status(404).json({
-                success: false,
-                message: "exam not found"
-            })
-            return;
-        }
+    getExamDetail = catchAsync(async (req: Request, res: Response): Promise<void> => {
+        const topicId = Number(req.params.topicId);
+        const examId = Number(req.params.examId)
+        const exam = await this.examService.getExamDetail(topicId, examId)
         res.status(200).json({
             success: true,
             data: exam
@@ -49,28 +43,22 @@ export class ExamController {
     })
 
     // 
-    deleteExam = catchAsync(async (req: Request, res: Response): Promise<void> => {
-        const examId = Number(req.params.id);
-        await this.examService.deleteExam(examId);
+    toggleExamActive = catchAsync(async (req: Request, res: Response): Promise<void> => {
+        const topicId = Number(req.params.topicId);
+        const examId = Number(req.params.examId);
+        await this.examService.toggleExamActive(topicId, examId);
 
         res.json({
             success: true,
-            message: "Exam deleted successfully"
+            message: "Exam toggle active successfully"
         })
     })
 
     updateExam = catchAsync(async (req: Request, res: Response): Promise<void> => {
-        const examId = Number(req.params.id);
+        const topicId = Number(req.params.topicId);
+        const examId = Number(req.params.examId);
         const updateData = req.body;
-
-        const exam = await this.examService.updateExam(examId, updateData);
-        if (!exam) {
-            res.json({
-                success: false,
-                message: "Exam not found"
-            })
-            return;
-        }
+        const exam = await this.examService.updateExam(topicId, examId, updateData);
         res.json({
             success: true,
             data: exam,
