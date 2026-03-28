@@ -34,7 +34,7 @@ export class FlashcardController {
     }
 
     static async getDeckById(req: Request, res: Response) {
-        const deckId = req.params.id
+        const deckId = Number(req.params.id)
         const deckItem = await flashcardService.getDeckbyId(deckId)
         res.status(200).json({
             success: true,
@@ -43,7 +43,7 @@ export class FlashcardController {
         })
     }
     static async updateDeck(req: Request, res: Response) {
-        const deckId = req.params.id
+        const deckId = Number(req.params.id)
         const deckData = req.body
         const deckItem = await flashcardService.updateDeck(deckData, deckId)
         res.status(200).json({
@@ -53,7 +53,7 @@ export class FlashcardController {
         })
     }
     static async deleteDeck(req: Request, res: Response) {
-        const deckId = req.params.id
+        const deckId = Number(req.params.id)
         await flashcardService.deleteDeck(deckId)
         res.status(204).json({
             message: "Da xoa thanh cong"
@@ -64,7 +64,7 @@ export class FlashcardController {
     // CONTROLLER WITH FLASH CARD 
 
     static async createFlashCard(req: Request, res: Response) {
-        const deckId = req.params.id
+        const deckId = Number(req.params.id)
         const { front, back } = req.body
 
         const flashcard = {
@@ -82,7 +82,7 @@ export class FlashcardController {
 
 
     static async updateflashcard(req: Request, res: Response) {
-        const cardId = req.params.id;
+        const cardId = Number(req.params.id);
         const cardData = req.body
         if (!cardId) {
             throw new Error("KO co card Id nay")
@@ -97,7 +97,7 @@ export class FlashcardController {
     }
 
     static async deleteCard(req: Request, res: Response) {
-        const cardId = req.params.id
+        const cardId = Number(req.params.id);
         await flashcardService.deleteCard(cardId)
         res.status(204).json({
             message: "Da xoa thanh cong"
@@ -105,7 +105,7 @@ export class FlashcardController {
     }
 
     static async getAllFlashcard(req: Request, res: Response) {
-        const deckId = req.params.deckId
+        const deckId = Number(req.params.deckId);
         const allFlashcard = await flashcardService.getAllflashcard(deckId)
         res.status(200).json({
             data: allFlashcard,

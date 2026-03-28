@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import AppError from '../utils/appError';
+import { AppError } from '../utils/appError';
 
 // hiển thị lỗi chi tiết trong quá trình phát triển
 // dễ DEBUG
@@ -33,7 +33,6 @@ const globalErrorHandler = (
   err: AppError,
   req: Request,
   res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _next: NextFunction
 ): void => {
   err.statusCode = err.statusCode || 500;

@@ -2,14 +2,17 @@ import { Request, Response } from "express";
 // import { AppDataSource } from "../data-source";
 // import { User } from "../entity/User";
 import { UserService } from "../service/userService";
-import { userRepository } from "../repository/userRepository";
 
-const userService = new UserService(userRepository);
+const userService = new UserService();
 
 export class UserController {
   static async all(req: Request, res: Response) {
     const users = await userService.findAll();
-    res.status(200).json(users);
+    res.status(200).json({
+      status: "success",
+      results: users.length,
+      data: { users },
+    });
   }
 
   static async findOne(req: Request, res: Response) {
@@ -30,7 +33,7 @@ export class UserController {
   }
 
   static async delete(req: Request, res: Response) {
-    const id = Number(req.params.id);
+    const id = String(req.params.id);
     const result = await userService.deleteUser(id);
     res.status(200).json(result);
   }

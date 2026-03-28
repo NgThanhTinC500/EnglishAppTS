@@ -1,5 +1,5 @@
 import { AppDataSource } from "../data-source";
-import { Repository } from "typeorm";
+
 import { FlashcardDeck } from "../entity/FlashcardDeck";
 import { Flashcard } from "../entity/Flashcard";
 

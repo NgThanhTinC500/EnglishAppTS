@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 });
 
 // Chỉ cho phép hình ảnh
-const fileFilter = (req: any, file: multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedMimes = [
         "image/jpeg",
         "image/jpg",

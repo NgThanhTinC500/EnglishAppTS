@@ -1,60 +1,82 @@
-import { IsNotEmpty, MinLength } from "class-validator"
-import { Entity, PrimaryGeneratedColumn, Column, Unique, BeforeInsert, BeforeUpdate, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from "typeorm"
-import { Exam } from "./Exam";
-import { Answer } from "./Answer";
-import { UserAnswer } from "./UserAnswer";
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsUrl, MaxLength, Min } from "class-validator"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from "typeorm"
+import { QuestionOption } from "./QuestionOption";
+import { ExamQuestion } from "./ExamQuestion";
+export enum QuestionType {
+    SINGLE_CHOICE = 'single_choice',
+}
 @Entity("questions")
 export class Question {
+
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ type: 'int' })
-    examId: number;
+    @Column({ type: 'enum', enum: QuestionType, default: QuestionType.SINGLE_CHOICE })
+    type: QuestionType;
 
-    @Column({ type: 'text' })
-    questionText: string;
+    @Column({ type: "text" })
+    @IsNotEmpty({ message: "Question text is required" })
+    content: string;
 
-    // type : kieu du lieu trong DB
-    // còn kiểu dữ liệu phía dưới là kiểu dữ liệu trong TS
-    // @Column({ type: 'int' })
-    // orderNumber: number;
-
-    @Column({ type: 'text' })
+    @Column({ type: "text" })
+    @IsOptional()
     explanation: string;
 
-    // ===== THÊM CÁC TRƯỜNG CHO LISTENING =====
+    // ===== LISTENING =====
 
     @Column({ type: "varchar", length: 255, nullable: true })
-    audioUrl: string; // URL file audio đã upload
+    @IsOptional()
+    @IsUrl({}, { message: "audioUrl must be a valid URL" })
+    audioUrl: string;
 
     @Column({ type: "varchar", length: 255, nullable: true })
-    audioFileName: string; // Tên file gốc
+    @IsOptional()
+    @MaxLength(255, { message: "audioFileName too long" })
+    audioFileName: string;
 
     @Column({ type: "int", nullable: true })
-    audioDuration: number; // Độ dài audio (giây)
+    @IsOptional()
+    @IsInt({ message: "audioDuration must be integer" })
+    @Min(1, { message: "audioDuration must be greater than 0" })
+    audioDuration: number;
 
     @Column({ type: "text", nullable: true })
-    transcript: string; // Bản transcript (nội dung audio)
+    @IsOptional()
+    transcript: string;
 
     @Column({ type: "boolean", default: false })
-    showTranscript: boolean; // Có hiển thị transcript không
+    @IsBoolean()
+    showTranscript: boolean;
 
+    // ===== RELATIONS =====
+    // với mỗi option, field question của nó là chiều ngược lại của mqh này
+    @OneToMany(() => QuestionOption, option => option.question, { cascade: true })
+    options: QuestionOption[];
 
-    // nhieu cau hoi thuoc ve 1 bai thi
-    // onDelete:Cascade => khi exam bi xoa thi question cung bi xoa
-    @ManyToOne(() => Exam, exam => exam.questions, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: "examId" }) // luôn được đặt phía @ManyToOne
-    exam: Exam; // trong bảng question lưu examId
+    // @OneToMany(() => QuestionTopic, qt => qt.question)
+    // questionTopics: QuestionTopic[];
 
-    // 1 cau hoi  gom nhieu dap an
-    // khi luu question thì lưu thêm answer
-    @OneToMany(() => Answer, answer => answer.question, { cascade: true })
-    answers: Answer[];
+    @OneToMany(() => ExamQuestion, eq => eq.question)
+    examQuestions: ExamQuestion[];
 
-    // để thống kê, xem câu hỏi nào nhiều thi sinh trả lời đúng or sai
-    @OneToMany(() => UserAnswer, (userAnswer) => userAnswer.question)
-    userAnswers: UserAnswer[];
+    // @ManyToOne(() => Exam, exam => exam.questions, {
+    //     onDelete: "CASCADE"
+    // })
+
+    // @JoinColumn({ name: "examId" })
+    // exam: Exam;
+
+    // @OneToMany(() => Answer, answer => answer.question, {
+    //     cascade: true
+    // })
+    // answers: Answer[];
+
+    // @OneToMany(() => UserAnswer, ua => ua.question)
+    // userAnswers: UserAnswer[];
 
     @CreateDateColumn()
     createdAt: Date;
-}   
+
+    @UpdateDateColumn()
+    updatedAt: Date;
+}
