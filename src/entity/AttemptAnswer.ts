@@ -47,6 +47,9 @@ export class AttemptAnswer {
   @Column({ type: 'timestamp', nullable: true })
   answeredAt: Date | null;
 
+  @Column({ nullable: true })
+  correctOptionId: number;
+  
   @CreateDateColumn()
   createdAt: Date;
 

@@ -23,7 +23,7 @@ AppDataSource.initialize()
     // create express app
     const app = express();
     const limiter = rateLimit({
-      max: 100,
+      max: 1000,
       windowMs: 60 * 60 * 1000,
       message: 'To many request from this IP, please try again'
     });

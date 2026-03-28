@@ -15,6 +15,7 @@ export class AttemptController {
         })
     })
     answerQuestion = catchAsync(async (req: Request, res: Response) => {
+        console.log("check")
         const attemptId = Number(req.params.attemptId);
         const { questionId, selectedOptionId } = req.body;
         const result = await this.attemptService.answerQuestion(

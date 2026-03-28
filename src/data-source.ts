@@ -11,7 +11,7 @@ export const AppDataSource = new DataSource({
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB,
   synchronize: false, // nên tắt để dùng migrationx
-  logging: true, // display query in console , ex: SELECT * FROM ...
+  logging: false, // display query in console , ex: SELECT * FROM ...
   entities: isProd
     ? ["build/entity/**/*.js"]
     : ["src/entity/**/*.ts"],

@@ -19,25 +19,57 @@ export class AttemptService {
     }
 
     async startExam(userId: string, examId: number) {
-        const exam = await this.examRepository.findOne({ where: { id: examId, isActive: true } });
+        const exam = await this.examRepository.findOne({
+            where: { id: examId, isActive: true },
+            relations: {
+                examQuestions: {
+                    question: {
+                        options: true
+                    }
+                }
+            }
+        });
+        // dữ liệu sẽ trả về 1 object,  nhiều dữ liệu sẽ gom thành mảng, trong mảng sẽ gồm object
         if (!exam) throw new AppError("Exam not found", 404);
-        const existingAttempt = this.attemptRepository.findOne({
+        const existingAttempt = await this.attemptRepository.findOne({
             where: {
                 userId, examId, status: AttemptStatus.IN_PROGRESS
             }
         })
+
+        // trả về lần làm dỡ
         if (existingAttempt) {
-            return existingAttempt;
+            // trả về đáp án lần đó luôn
+            const answers = await this.attemptAnswerRepository.find({
+                where: {
+                    attemptId: existingAttempt.id
+                }
+            })
+            console.log(answers)
+            return {
+                attempt: existingAttempt,
+                // với mỗi phần tử trong examquestion ta lấy question
+                questions: exam.examQuestions.map(eq => eq.question),
+                answers // answers đã chọn trước đó };
+            }
         }
-        const attempt = this.attemptRepository.create({
-            userId,
-            mode: AttemptMode.PRACTICE,
-            examId,
-            status: AttemptStatus.IN_PROGRESS,
-            startedAt: new Date()
-        })
-        return this.attemptRepository.save(attempt);
+        const attempt = await this.attemptRepository.save(
+            this.attemptRepository.create({
+                userId,
+                examId,
+                mode: AttemptMode.PRACTICE,
+                status: AttemptStatus.IN_PROGRESS,
+                startedAt: new Date()
+            })
+        );
+        return {
+            attempt,
+            questions: exam.examQuestions.map(eq => eq.question),
+            answers: []
+        }
     }
+
+
     async answerQuestion(attemptId: number, questionId: number, selectedOptionId: number) {
         const attempt = await this.attemptRepository.findOne({
             where: { id: attemptId }
@@ -55,22 +87,34 @@ export class AttemptService {
         if (!option) {
             throw new AppError("ko co cau hoi va dap an nay", 404)
         }
+        const correctOption = await this.questOptionRepository.findOne({
+            where: { questionId, isCorrect: true }
+        })
+        console.log(correctOption.id)
         const existing = await this.attemptAnswerRepository.findOne({
             where: { attemptId, questionId }
         });
+
         const result = option.isCorrect ? AnswerResult.CORRECT : AnswerResult.WRONG;
+
+
         if (existing) {
             existing.selectedOptionId = Number(selectedOptionId);
             existing.result = result;
             existing.answeredAt = new Date();
+            existing.correctOptionId = correctOption?.id;
             return await this.attemptAnswerRepository.save(existing);
         }
+        console.log("check service")
+
+
         const answer = this.attemptAnswerRepository.create({
             attemptId,
             questionId,
             selectedOptionId,
             result,
-            answeredAt: new Date()
+            answeredAt: new Date(),
+            correctOptionId: correctOption?.id,
         })
         return await this.attemptAnswerRepository.save(answer);
     }
@@ -84,26 +128,35 @@ export class AttemptService {
         if (attempt.status === AttemptStatus.SUBMITTED) {
             throw new AppError("bai thi da nop roi", 400)
         }
+
+        // Lấy tổng số câu hỏi thật sự của đề
+        const exam = await this.examRepository.findOne({
+            where: { id: examId },
+            relations: { examQuestions: true }
+        })
+        if (!exam) throw new AppError("Không tìm thấy đề thi", 404)
+
+        const totalQuestions = exam.examQuestions.length; // tổng câu của đề
+
         const answers = await this.attemptAnswerRepository.find({
             where: { attemptId: attemptId }
         })
+
         const correctCount = answers.filter(
             (item) => item.result === AnswerResult.CORRECT
         ).length;
 
-        const totalQuestions = answers.length;
         const score = totalQuestions > 0
             ? Number(((correctCount / totalQuestions) * 10).toFixed(2))
             : 0;
 
         attempt.status = AttemptStatus.SUBMITTED
         attempt.score = score;
-        attempt.totalQuestions = totalQuestions;
-        attempt.correctCount = correctCount;
+        attempt.totalQuestions = totalQuestions;   // tổng câu đề
+        attempt.correctCount = correctCount;        // số câu đúng
         attempt.submittedAt = new Date();
 
         return await this.attemptRepository.save(attempt)
-
     }
 
 }

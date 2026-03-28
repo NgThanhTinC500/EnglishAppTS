@@ -31,14 +31,12 @@ export class ExamService {
         const {
             title,
             description,
-            totalQuestions,
             duration
         } = examData;
 
         const exam = this.examRepository.create({
             title,
             description,
-            totalQuestions,
             duration,
             topicId
         });
@@ -60,7 +58,9 @@ export class ExamService {
             where: { topicId: topicId, id: examId },
             relations: {
                 examQuestions: {
-                    question: true
+                    question: {
+                        options: true
+                    }
                 }
             }
         });

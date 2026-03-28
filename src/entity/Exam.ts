@@ -41,10 +41,10 @@ export class Exam {
     @IsOptional()
     description: string;
 
-    @Column({ type: "int" })
-    @IsInt({ message: "totalQuestions must be integer" })
-    @Min(1, { message: "totalQuestions must be > 0" })
-    totalQuestions: number;
+    // @Column({ type: "int" })
+    // @IsInt({ message: "totalQuestions must be integer" })
+    // @Min(1, { message: "totalQuestions must be > 0" })
+    // totalQuestions: number;
 
     @Column({ type: "int", default: 60 })
     @IsInt()
