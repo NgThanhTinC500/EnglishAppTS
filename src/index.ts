@@ -3,12 +3,12 @@ import * as path from "path";
 // import * as bodyParser from "body-parser";
 import { AppDataSource } from "./data-source";
 import userRouter from "./router/userRouter";
-import examRouter from "./router/examRouter";
+// import examRouter from "./router/examRouter";
 import questionRouter from "./router/questionRouter";
 import * as dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import globalErrorHandler from './controller/errorController';
-import flashcardRouter from "./router/flashcardRouter";
+import flashcardRouter from "./router/vocabularyRouter";
 import blogRouter from "./router/blogRouter";
 import authRouter from "./router/authRouter";
 import * as cors from "cors";
@@ -46,9 +46,9 @@ AppDataSource.initialize()
     // setup express app here
     app.use("/api/v1/auth", authRouter);
     app.use("/api/v1", userRouter);
-    app.use("/api/v1/flashcard", flashcardRouter);
-    app.use("/api/v1", examRouter);
-    app.use("/api/v1/blog", blogRouter);
+    app.use("/api/v1", flashcardRouter);
+    // app.use("/api/v1", examRouter);
+    app.use("/api/v1", blogRouter);
     app.use("/api/v1", questionRouter);
     app.use("/api/v1", topicRouter);
 

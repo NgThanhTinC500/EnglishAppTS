@@ -1,8 +1,8 @@
-import { IsEmail, IsEnum, IsNotEmpty,  IsUrl, MaxLength, MinLength, IsOptional } from "class-validator"
+import { IsEmail, IsEnum, IsNotEmpty, IsUrl, MaxLength, MinLength, IsOptional } from "class-validator"
 import { Entity, PrimaryGeneratedColumn, Column, Unique, BeforeInsert, BeforeUpdate, OneToMany } from "typeorm"
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { FlashcardDeck } from "./FlashcardDeck";
+import { VocabularySet } from "./VocabularySet";
 import { Blog } from "./Blog";
 import { Attempt } from "./Attempt";
 
@@ -29,7 +29,7 @@ export class User {
     @IsEmail({}, { message: "Email is not valid" })
     email: string
 
-    @Column({nullable: true})
+    @Column({ nullable: true })
     @IsOptional()
     @IsUrl()
     photo: string;
@@ -65,8 +65,9 @@ export class User {
 
     // flashcarddeck.id => đại diện cho id trong bản ghi flashcarddeck
     // phải trỏ vào tên quan hệ
-    @OneToMany(() => FlashcardDeck, (flashcarddeck) => flashcarddeck.user)
-    flashcarddecks: FlashcardDeck[];
+    
+    @OneToMany(() => VocabularySet, (vocabularySet) => vocabularySet.user)
+    vocabularySets: VocabularySet[];
 
     // (blog) => blog.author 
     // blog.author  chính là thuộc tính user trong entity Blog
