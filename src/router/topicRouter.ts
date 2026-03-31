@@ -20,7 +20,6 @@ topicRouter.get("/topics/:topicId/exams/:examId", examController.getExamDetail)
 topicRouter.patch("/topics/:topicId/exams/:examId/active", examController.toggleExamActive)
 topicRouter.patch("/topics/:topicId/exams/:examId", examController.updateExam)
 
-
 // START EXAM
 topicRouter.post("/exams/:examId/startExam", attemptController.startExam)
 topicRouter.post("/attempts/:attemptId/answer", attemptController.answerQuestion)
