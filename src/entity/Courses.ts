@@ -1,3 +1,4 @@
+import { IsOptional } from 'class-validator';
 import {
     Entity, PrimaryGeneratedColumn, Column,
     CreateDateColumn, UpdateDateColumn
@@ -14,6 +15,7 @@ export class Course {
     @Column()
     description: string;
 
+    @IsOptional()
     @Column()
     thumbnailUrl: string;
 

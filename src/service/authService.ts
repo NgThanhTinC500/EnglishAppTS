@@ -69,7 +69,7 @@ export class AuthService {
       token,
       process.env.JWT_SECRET as string
     ) as JwtPayload;
-    console.log(decoded)
+    // console.log(decoded)
     const currentUser = await this.userService.findOne(decoded.id);
     if (!currentUser) {
       throw new AppError("The user belonging to this token does not exist", 401);

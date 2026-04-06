@@ -4,8 +4,8 @@ import {
 } from 'typeorm';
 import { Course } from './Courses';
 
-@Entity('sections')
-export class Section {
+@Entity('lessons')
+export class Lesson {
     @PrimaryGeneratedColumn()
     id: number;
 

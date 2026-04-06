@@ -3,18 +3,18 @@ import {
     CreateDateColumn, UpdateDateColumn
 } from 'typeorm';
 
-import { Section } from './Sections';
+import { Lesson } from './Lesson';
 @Entity('lectures')
 export class Lecture {
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column()
-    sectionId: number;
+    lessonId: number;
 
-    @ManyToOne(() => Section, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'sectionId' })
-    section: Section;
+    @ManyToOne(() => Lesson, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'lessonId' })
+    lesson: Lesson;
 
     @Column()
     title: string;

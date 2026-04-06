@@ -42,7 +42,7 @@ export class Question {
 
     @Column({ type: "text", nullable: true })
     @IsOptional()
-    transcript: string;
+    transcript!: string;
 
     @Column({ type: "boolean", default: false })
     @IsBoolean()

@@ -1,27 +1,53 @@
-import * as express from "express";
+import * as dotenv from 'dotenv';
+import express from "express";
 import * as path from "path";
 // import * as bodyParser from "body-parser";
 import { AppDataSource } from "./data-source";
 import userRouter from "./router/userRouter";
 // import examRouter from "./router/examRouter";
 import questionRouter from "./router/questionRouter";
-import * as dotenv from 'dotenv';
+
 import rateLimit from 'express-rate-limit';
 import globalErrorHandler from './controller/errorController';
 import flashcardRouter from "./router/vocabularyRouter";
 import blogRouter from "./router/blogRouter";
 import authRouter from "./router/authRouter";
-import * as cors from "cors";
-import * as cookieParser from "cookie-parser";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 import topicRouter from "./router/topicRouter";
+import courseRouter from "./router/courseRouter";
+import lessonRouter from "./router/LessonRouter";
+import lectureRouter from "./router/LectureRouter";
+import commentRouter from './router/commenRouter';
 dotenv.config();
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { initSocket } from "./socket/index";
 
 console.log('NODE_ENV =', process.env.NODE_ENV);
+const corsOptions = {
+  origin: "http://localhost:5173",
+  credentials: true,
+};
+
 AppDataSource.initialize()
   .then(async () => {
 
     // create express app
     const app = express();
+    const server = createServer(app);
+
+    initSocket(server);
+    // const io = new Server(server, {
+    //   cors: corsOptions
+    // });
+
+    // io.on("connection", (socket) => {
+    //   socket.on("test", (msg) => {
+    //     console.log(msg)
+    //   })
+    // });
+
     const limiter = rateLimit({
       max: 1000,
       windowMs: 60 * 60 * 1000,
@@ -34,10 +60,7 @@ AppDataSource.initialize()
     // tạo ra src/public
     app.use('/uploads', express.static(path.join(__dirname, 'public')));
 
-    app.use(cors({
-      origin: "http://localhost:5173", // port Vite của React
-      credentials: true,
-    }));
+    app.use(cors(corsOptions));
     app.use(express.json());
     // dung cookieParser để Node.js đọc được cookie từ request.
     app.use(cookieParser());
@@ -51,13 +74,18 @@ AppDataSource.initialize()
     app.use("/api/v1", blogRouter);
     app.use("/api/v1", questionRouter);
     app.use("/api/v1", topicRouter);
+    app.use("/api/v1", courseRouter);
+    app.use("/api/v1", lessonRouter);
+    app.use("/api/v1", lectureRouter);
+    app.use("/api/v1", commentRouter);
+    app.use(globalErrorHandler);
 
     // start express server
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server đang chạy ở port ${PORT} (${process.env.NODE_ENV})`);
     });
 
-    app.use(globalErrorHandler);
+
   })
   .catch((error) => console.log(error));

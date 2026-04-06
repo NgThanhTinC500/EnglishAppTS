@@ -1,0 +1,79 @@
+import { Request, Response } from "express";
+import { CommentService } from "../service/commentService";
+import catchAsync from "../utils/catchAsync";
+
+export class CommentController {
+    private commentService: CommentService;
+
+    constructor() {
+        this.commentService = new CommentService();
+    }
+
+    createComment = catchAsync(async (req: Request, res: Response) => {
+        const lectureId = Number(req.params.lectureId);
+        const parentCommentId = req.body.parentCommentId
+            ? Number(req.body.parentCommentId)
+            : undefined;
+        const content = req.body.content?.trim();
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Bạn chưa đăng nhập",
+            });
+        }
+
+        if (Number.isNaN(lectureId)) {
+            return res.status(400).json({
+                success: false,
+                message: "lectureId không hợp lệ",
+            });
+        }
+
+        if (!content) {
+            return res.status(400).json({
+                success: false,
+                message: "Nội dung comment không được để trống",
+            });
+        }
+
+        if (
+            parentCommentId !== undefined &&
+            Number.isNaN(parentCommentId)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "parentCommentId không hợp lệ",
+            });
+        }
+
+        const comment = await this.commentService.createComment(
+            lectureId,
+            userId,
+            content,
+            parentCommentId
+        );
+
+        res.status(201).json({
+            success: true,
+            data: comment,
+        });
+    });
+
+
+    getCommentsByLectureId = catchAsync(async (req: Request, res: Response) => {
+        const lectureId = Number(req.params.lectureId);
+        if (Number.isNaN(lectureId)) {
+            return res.status(400).json({
+                success: false,
+                message: "lectureId không hợp lệ",
+            });
+        }
+        const comments = await this.commentService.getCommentsByLectureId(lectureId);
+        res.status(200).json({
+            success: true,
+            data: comments,
+        });
+    })
+}
