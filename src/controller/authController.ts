@@ -15,13 +15,14 @@ export class AuthController {
   // Tạo và gửi token về client — thuộc Controller vì dùng res
   private createSendToken(user: User, statusCode: number, res: Response) {
     const token = this.authService.signToken(user.id);
+    const cookieExpiresIn = Number(process.env.JWT_COOKIE_EXPIRES_IN || 90);
     const cookieOptions = {
       expires: new Date(
-        Date.now() +
-        Number(process.env.JWT_COOKIE_EXPIRES_IN) * 24 * 60 * 60 * 1000
+        Date.now() + cookieExpiresIn * 24 * 60 * 60 * 1000
       ),
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax" as const,
     };
 
     res.cookie("jwt", token, cookieOptions);
@@ -45,10 +46,12 @@ export class AuthController {
     this.createSendToken(user, 200, res);
   });
 
-  logout = (req: Request, res: Response) => {
+  logout = (_req: Request, res: Response) => {
     res.cookie("jwt", "loggedout", {
       expires: new Date(Date.now() + 10 * 1000),
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
     });
     res.status(200).json({ status: "success" });
   };

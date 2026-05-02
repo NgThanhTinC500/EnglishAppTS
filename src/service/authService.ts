@@ -12,7 +12,12 @@ export class AuthService {
   constructor(private readonly userService: UserService) { }
 
   signToken(userId: string): string {
-    return jwt.sign({ id: userId }, process.env.JWT_SECRET as string, {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new AppError("JWT secret is not configured", 500);
+    }
+
+    return jwt.sign({ id: userId }, jwtSecret, {
       expiresIn: process.env.JWT_EXPIRES_IN,
     });
   }
@@ -28,7 +33,11 @@ export class AuthService {
     if (existingUser) {
       throw new AppError("Email already in use", 400);
     }
-    const newUser = await this.userService.createUser(data);
+    const newUser = await this.userService.createUser({
+      name: data.name,
+      email: data.email,
+      password: data.password,
+    });
     return newUser;
   }
 
@@ -41,8 +50,7 @@ export class AuthService {
       throw new AppError("Please provide email and password", 400);
     }
     const user = await this.userService.findByEmail(email);
-    console.log("check: ", user)
-    if (!user || !(await user.correctPassword(password, user.password))) {
+    if (!user || !user.isActive || !(await user.correctPassword(password))) {
       throw new AppError("Incorrect email or password", 401);
     }
     return user;
@@ -54,7 +62,7 @@ export class AuthService {
 
     if (
       req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
+      req.headers.authorization.startsWith("Bearer ")
     ) {
       token = req.headers.authorization.split(" ")[1];
     } else if (req.cookies?.jwt) {
@@ -65,13 +73,20 @@ export class AuthService {
       throw new AppError("You are not logged in, please login to get access", 401);
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    ) as JwtPayload;
-    // console.log(decoded)
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new AppError("JWT secret is not configured", 500);
+    }
+
+    let decoded: JwtPayload;
+    try {
+      decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+    } catch {
+      throw new AppError("Invalid or expired token. Please log in again", 401);
+    }
+
     const currentUser = await this.userService.findOne(decoded.id);
-    if (!currentUser) {
+    if (!currentUser || !currentUser.isActive) {
       throw new AppError("The user belonging to this token does not exist", 401);
     }
 
@@ -97,7 +112,10 @@ export class AuthService {
     passwordConfirm: string
   ): Promise<User> {
     const user = await this.userService.findOneWithPassword(userId);
-    if (!(await user.correctPassword(currentPassword, user.password))) {
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+    if (!(await user.correctPassword(currentPassword))) {
       throw new AppError("Your current password is wrong", 401);
     }
 
@@ -107,7 +125,6 @@ export class AuthService {
     }
 
     user.password = newPassword;
-    user.passwordConfirm = passwordConfirm;
     await this.userService.save(user);
     // await this.userService.updateUser(user.id, {
     //   password: newPassword,
@@ -137,7 +154,7 @@ export class AuthService {
         subject: "Your password reset token (valid for 10 min)",
         message: `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`,
       });
-    } catch (err) {
+    } catch {
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
       await this.userService.saveResetToken(user);
@@ -165,8 +182,11 @@ export class AuthService {
       throw new AppError("Token is invalid or has expired", 400);
     }
 
+    if (password !== passwordConfirm) {
+      throw new AppError("Passwords do not match", 400);
+    }
+
     user.password = password;
-    user.passwordConfirm = passwordConfirm;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
 

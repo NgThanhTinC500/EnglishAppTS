@@ -6,7 +6,7 @@ export class CommentService {
 
     async createComment(
         lectureId: number,
-        userId: number,
+        userId: string,
         content: string,
         parentCommentId?: number
     ): Promise<Comment> {

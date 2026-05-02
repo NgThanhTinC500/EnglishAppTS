@@ -1,4 +1,3 @@
-import { IsOptional } from 'class-validator';
 import {
     Entity, PrimaryGeneratedColumn, Column,
     CreateDateColumn, UpdateDateColumn,
@@ -17,8 +16,8 @@ export class Comment {
     @Column()
     content: string;
 
-    @Column()
-    userId: number;
+    @Column("uuid")
+    userId: string;
 
     @ManyToOne(() => User, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'userId' })

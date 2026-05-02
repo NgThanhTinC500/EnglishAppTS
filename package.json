@@ -44,7 +44,8 @@
     "reflect-metadata": "0.2.2",
     "rimraf": "5.0.1",
     "socket.io": "^4.8.3",
-    "typeorm": "0.3.27"
+    "typeorm": "0.3.27",
+    "zod": "^4.3.6"
   },
   "scripts": {
     "start:dev": "ts-node-dev --respawn --transpile-only src/index.ts",

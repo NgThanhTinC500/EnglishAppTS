@@ -55,9 +55,13 @@ export class VocabularyService {
     }
 
     async createVocabCard(vocabsetsId: number, flashcardData: Partial<Vocabulary>) {
-        const { word, meaning } = flashcardData;
+        const { word, meaning, pronunciation, example } = flashcardData;
         const flashcard = this.vocabRepository.create({
-            vocabSetId: vocabsetsId, word, meaning
+            vocabSetId: vocabsetsId,
+            word,
+            meaning,
+            pronunciation,
+            example,
         })
         return this.vocabRepository.save(flashcard)
     }

@@ -13,6 +13,52 @@ export class ExamService {
     private questionRepository = AppDataSource.getRepository(Question);
     private answerRepository = AppDataSource.getRepository(QuestionOption);
     private topicRepository = AppDataSource.getRepository(Topic)
+
+    private splitDictationAnswers(value: string | null | undefined) {
+        return (value ?? "")
+            .split(",")
+            .map(answer => answer.trim())
+            .filter(Boolean);
+    }
+
+    private maskTranscript(transcript: string | null, correctAnswers: string[]) {
+        if (!transcript) return transcript;
+        if (transcript.includes("[BLANK]")) return transcript;
+
+        return correctAnswers.reduce((maskedTranscript, answer) => {
+            if (!answer) return maskedTranscript;
+            const escapedAnswer = answer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            return maskedTranscript.replace(new RegExp(`\\b${escapedAnswer}\\b`, "i"), "[BLANK]");
+        }, transcript);
+    }
+
+    private toSafeQuestion(question: Question) {
+        const correctAnswers = this.splitDictationAnswers(question.dictationAnswer);
+        return {
+            id: question.id,
+            category: question.category,
+            type: question.type,
+            content: question.content,
+            explanation: question.explanation,
+            audioUrl: question.audioUrl,
+            audioFileName: question.audioFileName,
+            audioDuration: question.audioDuration,
+            transcript: question.showTranscript
+                ? question.transcript
+                : this.maskTranscript(question.transcript, correctAnswers),
+            showTranscript: question.showTranscript,
+            dictationAnswer: question.dictationAnswer,
+            options: question.options?.map(option => ({
+                id: option.id,
+                questionId: option.questionId,
+                label: option.label,
+                content: option.content,
+                isCorrect: option.isCorrect
+            })) ?? [],
+            createdAt: question.createdAt,
+            updatedAt: question.updatedAt
+        };
+    }
     // constructor() {
     //     this.examRepository =
     //     this.questionRepository
@@ -26,17 +72,12 @@ export class ExamService {
         const topic = await this.topicRepository.findOne({
             where: { id: topicId }
         });
-        if (!topic) throw new Error("Topic not found");
-
-        const {
-            title,
-            description,
-            duration
-        } = examData;
+        if ( !topic ) 
+            throw new AppError("Topic not found", 404);
+        const { title, duration } = examData;
 
         const exam = this.examRepository.create({
             title,
-            description,
             duration,
             topicId
         });
@@ -53,7 +94,7 @@ export class ExamService {
     }
 
     // Service
-    async getExamDetail(topicId: number, examId: number): Promise<Exam> {
+    async getExamDetail(topicId: number, examId: number) {
         const exam = await this.examRepository.findOne({
             where: { topicId: topicId, id: examId },
             relations: {
@@ -67,7 +108,13 @@ export class ExamService {
         if (!exam) {
             throw new AppError("Ko co exam", 404)
         }
-        return exam
+        return {
+            ...exam,
+            examQuestions: exam.examQuestions?.map(examQuestion => ({
+                ...examQuestion,
+                question: this.toSafeQuestion(examQuestion.question)
+            })) ?? []
+        }
     }
 
     async toggleExamActive(topicId: number, examId: number) {

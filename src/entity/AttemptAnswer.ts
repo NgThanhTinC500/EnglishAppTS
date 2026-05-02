@@ -49,6 +49,12 @@ export class AttemptAnswer {
 
   @Column({ nullable: true })
   correctOptionId: number;
+
+  @Column({ type: 'text', nullable: true })
+  answerText: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  correctAnswerText: string | null;
   
   @CreateDateColumn()
   createdAt: Date;

@@ -16,7 +16,6 @@ export class AttemptController {
         })
     })
     answerQuestion = catchAsync(async (req: Request, res: Response) => {
-        console.log("check")
         const attemptId = Number(req.params.attemptId);
         const { questionId, selectedOptionId } = req.body;
         const result = await this.attemptService.answerQuestion(
@@ -26,6 +25,21 @@ export class AttemptController {
             success: true,
             data: result,
             message: "create answer"
+        })
+    })
+
+    answerDictation = catchAsync(async (req: Request, res: Response) => {
+        const attemptId = Number(req.params.attemptId);
+        const { questionId, answerText } = req.body;
+        const result = await this.attemptService.answerDictation(
+            attemptId,
+            Number(questionId),
+            String(answerText ?? "")
+        )
+        res.status(201).json({
+            success: true,
+            data: result,
+            message: "create dictation answer"
         })
     })
     submitExam = catchAsync(async (req: Request, res: Response) => {

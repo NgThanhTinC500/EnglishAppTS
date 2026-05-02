@@ -10,9 +10,9 @@ export function registerCommentSocket(io, socket) {
     });
     socket.on("comment:send", async (data: {
         lectureId: number;
-        userId: number;
+        userId: string;
         content: string;
-        parentCommentId: null;
+        parentCommentId?: number | null;
     }) => {
         try {
             console.log(data)

@@ -21,7 +21,7 @@ export class ExamController {
         });
     })
 
-    getAllExams = catchAsync(async (req: Request, res: Response) => {
+    getAllExamsByTopicId = catchAsync(async (req: Request, res: Response) => {
         const topicId = Number(req.params.topicId);
         const exams = await this.examService.getAllExams(topicId);
         res.status(200).json({
