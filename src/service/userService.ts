@@ -63,9 +63,9 @@ export class UserService {
 
   // user.service.ts
   // lấy kiểu dữ liệu trong entity User
-  async findByCondition(condition: FindOptionsWhere<User>) {
-    return await this.userRepository.findOne({ where: condition });
-  }
+async findOneBy(condition: FindOptionsWhere<User>) {
+  return await this.userRepository.findOne({ where: condition });
+}
 
   async save(user: User): Promise<User> {
     return await this.userRepository.save(user);
