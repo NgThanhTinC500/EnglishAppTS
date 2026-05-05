@@ -8,7 +8,6 @@ export class VocabularyController {
 
     // CONTROLLER WITH FLASH CARD DECK
     createVocabSets = catchAsync(async (req: Request, res: Response) => {
-        console.log("test")
         const { name } = req.body;
         const userId = req.user.id;
         const deckData = {

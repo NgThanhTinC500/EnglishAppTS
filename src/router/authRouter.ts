@@ -13,9 +13,9 @@ authRouter.post("/reset-password/:token", authController.resetPassword);
 
 // authController.restrictTo("admin", "user");
 
-authRouter.use(authController.protect);
-authRouter.post("/logout", authController.logout);
-authRouter.get("/me", authController.getCurrentUser);
-authRouter.patch("/updateMyPassword", authController.updatePassword);
+// authRouter.use(authController.protect);
+authRouter.post("/logout", authController.protect, authController.logout);
+authRouter.get("/me",authController.protect, authController.getCurrentUser);
+authRouter.patch("/updateMyPassword", authController.protect, authController.updatePassword);
 
 export default authRouter;

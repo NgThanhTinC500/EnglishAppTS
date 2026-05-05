@@ -27,9 +27,10 @@ export class TopicService {
         if (!topic) {
             throw new AppError("khong co topic", 404);
         }
-        const { title, description } = topicData;
+        const { title, description, type } = topicData;
         if (title !== undefined) topic.title = title;
         if (description !== undefined) topic.description = description;
+        if (type !== undefined) topic.type = type;
 
         return await this.topicRepository.save(topic);
     }

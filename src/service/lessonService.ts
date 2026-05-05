@@ -42,7 +42,15 @@ export class LessonService {
 
         return await this.lessonRepository.find({
             where: { courseId },
-
+            relations: {
+                lectures: true,
+            },
+            order: {
+                createdAt: "ASC",
+                lectures: {
+                    createdAt: "ASC",
+                },
+            },
         });
     }
 

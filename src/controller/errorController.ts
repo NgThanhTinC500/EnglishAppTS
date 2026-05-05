@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/appError';
 
-// hiển thị lỗi chi tiết trong quá trình phát triển
-// dễ DEBUG
+//  Show error details in development to ease debug
+
 const sendErrorDev = (err: AppError, res: Response): void => {
   res.status(err.statusCode || 500).json({
     status: err.status || 'error',
@@ -28,7 +28,7 @@ const sendErrorProd = (err: AppError, res: Response): void => {
   }
 };
 
-// express nhận diện lỗi dựa trên 4 tham số
+// exress recogizes this as error handling middleware because it has 4 parameters
 const globalErrorHandler = (
   err: AppError,
   req: Request,

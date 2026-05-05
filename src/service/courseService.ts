@@ -20,7 +20,12 @@ export class CourseService {
 
     async getCourseById(id: number): Promise<Course> {
         const course = await this.courseRepository.findOne({
-            where: { id }
+            where: { id },
+            relations: {
+                lessons: {
+                    lectures: true,
+                },
+            },
         });
 
         if (!course) {

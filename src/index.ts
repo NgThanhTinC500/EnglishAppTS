@@ -38,31 +38,21 @@ AppDataSource.initialize()
     const server = createServer(app);
 
     initSocket(server);
-    // const io = new Server(server, {
-    //   cors: corsOptions
-    // });
-
-    // io.on("connection", (socket) => {
-    //   socket.on("test", (msg) => {
-    //     console.log(msg)
-    //   })
-    // });
 
     const limiter = rateLimit({
       max: 1000,
       windowMs: 60 * 60 * 1000,
       message: 'To many request from this IP, please try again'
     });
-    // Phục vụ thư mục public
-    //Mọi request bắt đầu bằng /uploads sẽ được Express 
-    // tự động tìm trong folder public và trả file tương ứng.
-    // dirname -> trỏ đến thư mục chứa folder hiện tại (src)
-    // tạo ra src/public
+
+    // Serve static files (e.g., images) from the "public" directory under the "/uploads" route
     app.use('/uploads', express.static(path.join(__dirname, 'public')));
 
     app.use(cors(corsOptions));
     app.use(express.json());
-    // dung cookieParser để Node.js đọc được cookie từ request.
+    
+    // cookieParser to read cookies from incoming requests,
+    //  allowing us to access them via req.cookies in our route handlers.
     app.use(cookieParser());
     app.use('/api', limiter);
 
@@ -78,6 +68,7 @@ AppDataSource.initialize()
     app.use("/api/v1", lessonRouter);
     app.use("/api/v1", lectureRouter);
     app.use("/api/v1", commentRouter);
+
     app.use(globalErrorHandler);
 
     // start express server

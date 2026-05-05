@@ -15,14 +15,28 @@ export class BlogController {
     });
 
     createBlog = catchAsync(async (req: Request, res: Response) => {
-        const { title, content, tag } = req.body;
+        const {
+            title,
+            content,
+            tag,
+            category,
+            slug,
+            excerpt,
+            coverImage,
+            readingTimeMinutes,
+        } = req.body;
         const imageFile = req.file;
 
         const newBlog = await this.blogService.createBlog({
-            tag,
+            tag: tag || category,
+            category,
+            slug,
             title,
+            excerpt,
             content,
             image: imageFile ? imageFile.filename : null,
+            coverImage: coverImage || (imageFile ? imageFile.filename : null),
+            readingTimeMinutes,
         });
 
         res.status(201).json({
@@ -33,16 +47,41 @@ export class BlogController {
 
     updateBlog = catchAsync(async (req: Request, res: Response) => {
         const blogId = Number(req.params.id);
-        const { title, content, tag } = req.body;
-        const imageFile = req.file;
-
-        const updateData: Partial<{ title: string; content: string; tag: string; image: string }> = {
-            tag,
+        const {
             title,
             content,
+            tag,
+            category,
+            slug,
+            excerpt,
+            coverImage,
+            readingTimeMinutes,
+        } = req.body;
+        const imageFile = req.file;
+
+        const updateData: Partial<{
+            title: string;
+            content: string;
+            tag: string;
+            category: string;
+            slug: string;
+            excerpt: string;
+            image: string;
+            coverImage: string;
+            readingTimeMinutes: number;
+        }> = {
+            tag,
+            category,
+            slug,
+            title,
+            excerpt,
+            content,
+            coverImage,
+            readingTimeMinutes,
         };
         if (imageFile) {
             updateData.image = imageFile.filename;
+            updateData.coverImage = imageFile.filename;
         }
 
         const updatedBlog = await this.blogService.updateBlog(blogId, updateData);

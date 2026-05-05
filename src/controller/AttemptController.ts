@@ -6,7 +6,6 @@ export class AttemptController {
 
     startExam = catchAsync(async (req: Request, res: Response) => {
         const userId = req.user.id;
-        console.log(userId)
         const examId = Number(req.params.examId);
         const attempt = await this.attemptService.startExam(userId, examId)
         res.status(201).json({

@@ -29,7 +29,7 @@ export class Topic {
     default: TopicType.GRAMMAR
   })
   type: TopicType;
-  
+
   @OneToMany(() => Exam, exam => exam.topic)
   exams: Exam[];
 

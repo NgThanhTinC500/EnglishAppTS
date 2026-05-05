@@ -10,4 +10,5 @@ questionRouter.get("/questions/dictation/:questionId", questionController.getDic
 questionRouter.get("/questions/:questionId", questionController.getQuestionDetail);
 questionRouter.patch("/questions/:questionId", questionController.updateQuestion);
 questionRouter.delete("/questions/:questionId", questionController.deleteQuestion);
+
 export default questionRouter;

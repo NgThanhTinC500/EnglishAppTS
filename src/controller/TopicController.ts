@@ -22,7 +22,7 @@ export class TopicController {
         res.status(200).json({
             success: true,
             data: topic,
-            message: "TOPIC update successfull"
+            message: "Topic updated successfully"
         })
     })
 
