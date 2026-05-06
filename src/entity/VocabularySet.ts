@@ -20,6 +20,9 @@ export class VocabularySet {
   @Column({ type: "varchar", length: 255 })
   name: string;
 
+  @Column({ nullable: true })
+  tag: string;
+
   @Column()
   userId: string;
 

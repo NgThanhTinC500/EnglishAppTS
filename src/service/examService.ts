@@ -82,7 +82,7 @@ export class ExamService {
     async getAllExams(topicId: number) {
         return await this.examRepository.find({
             where: { topicId: topicId, isActive: true },
-            order: { createdAt: "DESC" }
+            order: { id: "ASC" }
             // relations: ["questions", "questions.answers"],
         });
     }
