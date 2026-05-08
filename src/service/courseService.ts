@@ -1,6 +1,7 @@
 import { AppDataSource } from "../data-source";
 import { Course } from "../entity/Courses";
 import { Repository } from "typeorm";
+import { AppError } from "../utils/appError";
 
 export class CourseService {
     private courseRepository: Repository<Course>;
@@ -38,7 +39,7 @@ export class CourseService {
         });
 
         if (!course) {
-            throw new Error("Course not found");
+            throw new AppError("Khóa học không tồn tại", 404);
         }
 
         return course;
@@ -50,7 +51,7 @@ export class CourseService {
         });
 
         if (!course) {
-            throw new Error("Course not found");
+            throw new AppError("Khóa học không tồn tại", 404);
         }
 
         Object.assign(course, updateData);
@@ -64,7 +65,7 @@ export class CourseService {
         });
 
         if (!course) {
-            throw new Error("Course not found");
+            throw new AppError("Khóa học không tồn tại", 404);
         }
 
         await this.courseRepository.remove(course);

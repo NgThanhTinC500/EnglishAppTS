@@ -13,34 +13,34 @@ import { VocabularySet } from "./VocabularySet";
 @Entity("vocabulary")
 export class Vocabulary {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ type: "varchar", length: 255 })
-  word: string;
+  word!: string;
 
   @Column({ type: "text" })
-  meaning: string;
+  meaning!: string;
 
   @Column({ nullable: true })
-  pronunciation: string;
+  pronunciation!: string | null;
 
   @Column({ nullable: true })
-  example: string;
+  example!: string | null;
 
   @Column()
-  vocabSetId: number;
+  vocabSetId!: number;
 
   @ManyToOne(
     () => VocabularySet,
-    (vocabSet) => vocabSet.vocabularies,
+    (vocabularySet) => vocabularySet.vocabularies,
     { onDelete: "CASCADE" }
   )
   @JoinColumn({ name: "vocabSetId" })
-  vocabSet: VocabularySet;
+  vocabularySet!: VocabularySet;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

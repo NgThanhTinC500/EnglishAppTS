@@ -10,6 +10,9 @@ export class TopicService {
     }
 
     async createTopic(topicData: Partial<Topic>) {
+        if (!topicData.title?.trim()) {
+            throw new AppError("Title phải có", 400);
+        }
         const { title, description, type } = topicData;
         const topic = this.topicRepository.create({
             title,
@@ -25,7 +28,7 @@ export class TopicService {
         });
 
         if (!topic) {
-            throw new AppError("khong co topic", 404);
+            throw new AppError("Topic không tồn tại", 404);
         }
         const { title, description, type } = topicData;
         if (title !== undefined) topic.title = title;
@@ -41,13 +44,13 @@ export class TopicService {
         });
 
         if (!topic) {
-            throw new AppError("khong co topic", 404);
+            throw new AppError("Topic không tồn tại", 404);
         }
 
-        await this.topicRepository.remove(topic);
+           await this.topicRepository.delete(topicId);
     }
 
-
+    // Get all topics with total questions count, filter by type if provided
     async getAllTopic(type?: TopicType) {
         const topics = await this.topicRepository.query(`
         SELECT
@@ -63,7 +66,7 @@ export class TopicService {
             ON e."topicId" = t.id
             AND e."isActive" = true
         LEFT JOIN exam_questions eq
-            ON eq."examId" = e.id
+            ON eq."examId" = e.id   
         WHERE ($1::text IS NULL OR t.type = $1::topics_type_enum)
         GROUP BY
             t.id,

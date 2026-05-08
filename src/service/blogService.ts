@@ -32,7 +32,7 @@ export class BlogService {
         });
 
         if (!blog) {
-            throw new AppError("Blog not found", 404);
+            throw new AppError("Blog không tồn tại", 404);
         }
 
         return blog;
@@ -47,7 +47,7 @@ export class BlogService {
     async deleteBlog(blogId: number): Promise<void> {
         const result = await this.blogRepository.update(blogId, { isPublished: false });
         if (result.affected === 0) {
-            throw new AppError("Blog not found", 404);
+            throw new AppError("Blog không tồn tại", 404);
         }
     }
 }

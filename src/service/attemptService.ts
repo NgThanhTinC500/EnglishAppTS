@@ -71,7 +71,10 @@ export class AttemptService {
         };
     }
 
+    // start a new attempt for an exam,
+    //  or return existing in-progress attempt if exists
     async startExam(userId: string, examId: number) {
+        // 1. Kiểm tra exam tồn tại
         const exam = await this.examRepository.findOne({
             where: { id: examId, isActive: true },
             relations: {
@@ -87,27 +90,16 @@ export class AttemptService {
                 }
             }
         });
-
         if (!exam) throw new AppError("Exam not found", 404);
 
+        // 2. Tìm hoặc tạo attempt
         const existingAttempt = await this.attemptRepository.findOne({
             where: { userId, examId, status: AttemptStatus.IN_PROGRESS }
         });
 
-        if (existingAttempt) {
-            const answers = await this.attemptAnswerRepository.find({
-                where: { attemptId: existingAttempt.id }
-            });
-
-            return {
-                attempt: existingAttempt,
-                questions: exam.examQuestions.map(eq => this.toQuestionForAttempt(eq.question)),
-                answers,
-                progress: await this.getProgress(existingAttempt)
-            };
-        }
-
-        const attempt = await this.attemptRepository.save(
+        // tạo attempt mới nếu chưa có attempt nào đang làm cho exam này,
+        //  hoặc trả về attempt đang làm
+        const attempt = existingAttempt ?? await this.attemptRepository.save(
             this.attemptRepository.create({
                 userId,
                 examId,
@@ -117,60 +109,71 @@ export class AttemptService {
             })
         );
 
+        // 3. Lấy các câu đã trả lời (nếu là attempt mới thì rỗng)
+        const answeredQuestions = existingAttempt
+            ? await this.attemptAnswerRepository.find({
+                where: { attemptId: attempt.id }
+            })
+            : [];
+
         return {
             attempt,
             questions: exam.examQuestions.map(eq => this.toQuestionForAttempt(eq.question)),
-            answers: [],
-            progress: await this.getProgress(attempt)
+            answeredQuestions,
         };
     }
-
+    // answer a question in an attempt, 
+    // create or update the corresponding AttemptAnswer record
     async answerQuestion(attemptId: number, questionId: number, selectedOptionId: number) {
+        // 1. Kiểm tra attempt hợp lệ
         const attempt = await this.attemptRepository.findOne({
             where: { id: attemptId }
         });
-
-        if (!attempt) {
-            throw new AppError("Khong tim thay lan lam bai", 404);
-        }
+        if (!attempt) throw new AppError("Không tồn tại lần thi này", 404);
         if (attempt.status !== AttemptStatus.IN_PROGRESS) {
-            throw new AppError("Bai thi khong con o trang thai lam bai", 400);
+            throw new AppError("Bài thi không còn ở trạng thái làm bài", 400);
         }
 
-        const option = await this.questOptionRepository.findOne({
-            where: { id: selectedOptionId, questionId },
-            relations: {
-                question: true
-            }
+        // 2. Lấy tất cả options của câu hỏi — 1 query duy nhất
+        const options = await this.questOptionRepository.find({
+            where: { questionId }
         });
-        if (!option) {
-            throw new AppError("Khong co cau hoi va dap an nay", 404);
-        }
 
-        const correctOption = await this.questOptionRepository.findOne({
-            where: { questionId, isCorrect: true }
-        });
+        // console.log(options)
+        if (!options.length) throw new AppError("Câu hỏi không tồn tại", 404);
+
+        // tìm option được chọn trong số options của câu hỏi
+        const selectedOption = options.find(o => o.id === Number(selectedOptionId));
+        if (!selectedOption) throw new AppError("Đáp án không thuộc câu hỏi này", 404);
+
+        // tìm đáp án đúng
+        const correctOption = options.find(o => o.isCorrect);
+
+        // 3. Lưu hoặc cập nhật answer
         const existing = await this.attemptAnswerRepository.findOne({
             where: { attemptId, questionId }
         });
-        const result = option.isCorrect ? AnswerResult.CORRECT : AnswerResult.WRONG;
+        // nếu chọn rồi thì cập nhật, chưa chọn thì tạo mới
         const answer = existing ?? this.attemptAnswerRepository.create({ attemptId, questionId });
 
         answer.selectedOptionId = Number(selectedOptionId);
-        answer.result = result;
+        answer.result = selectedOption.isCorrect ? AnswerResult.CORRECT : AnswerResult.WRONG;
         answer.answeredAt = new Date();
-        answer.correctOptionId = correctOption?.id;
-        answer.answerText = null;
-        answer.correctAnswerText = null;
 
         const savedAnswer = await this.attemptAnswerRepository.save(answer);
 
+        // 4. Lấy explanation từ question
+        const question = await this.questionRepository.findOne({
+            where: { id: questionId },
+            select: ['explanation', 'transcript']
+        });
+
         return {
-            answer: savedAnswer,
-            isCorrect: result === AnswerResult.CORRECT,
+            answerId: savedAnswer.id,
+            isCorrect: selectedOption.isCorrect,
             correctOptionId: correctOption?.id,
-            explanation: option.question?.explanation,
-            progress: await this.getProgress(attempt)
+            explanation: question?.explanation ?? null,
+            transcript: question?.transcript ?? null,
         };
     }
 
@@ -180,20 +183,20 @@ export class AttemptService {
         });
 
         if (!attempt) {
-            throw new AppError("Khong tim thay lan lam bai", 404);
+            throw new AppError("Không tồn tại lần thi này", 404);
         }
         if (attempt.status !== AttemptStatus.IN_PROGRESS) {
-            throw new AppError("Bai thi khong con o trang thai lam bai", 400);
+            throw new AppError("Bài thi không còn ở trạng thái làm bài", 400);
         }
 
         const question = await this.questionRepository.findOne({
             where: { id: questionId }
         });
         if (!question || question.type !== QuestionType.DICTATION) {
-            throw new AppError("Khong co cau hoi nghe chep chinh ta nay", 404);
+            throw new AppError("Không tồn tại câu hỏi nghe chép chính xác này", 404);
         }
         if (!question.dictationAnswer) {
-            throw new AppError("Cau hoi nay chua co dap an dung", 400);
+            throw new AppError("Câu hỏi này chưa có đáp án đúng", 400);
         }
 
         const result = this.normalizeAnswer(answerText) === this.normalizeAnswer(question.dictationAnswer)
@@ -231,17 +234,17 @@ export class AttemptService {
             where: { id: attemptId, userId, examId }
         });
         if (!attempt) {
-            throw new AppError("Ko co lan thi nay", 404);
+            throw new AppError("Không tồn tại lần thi này", 404);
         }
         if (attempt.status === AttemptStatus.SUBMITTED) {
-            throw new AppError("Bai thi da nop roi", 400);
+            throw new AppError("Bài thi đã nộp rồi", 400);
         }
 
         const exam = await this.examRepository.findOne({
             where: { id: examId },
             relations: { examQuestions: true }
         });
-        if (!exam) throw new AppError("Khong tim thay de thi", 404);
+        if (!exam) throw new AppError("Không tìm thấy đề thi", 404);
 
         const totalQuestions = exam.examQuestions.length;
         const answers = await this.attemptAnswerRepository.find({

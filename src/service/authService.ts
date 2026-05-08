@@ -15,18 +15,17 @@ export class AuthService {
 
     signToken(userId: string): string {
         const jwtSecret = process.env.JWT_SECRET;
+        const jwtExpiresIn = process.env.JWT_EXPIRES_IN ?? "7d"; // fallback nếu undefined
 
         if (!jwtSecret) {
             throw new AppError("JWT secret is not configured", 500);
         }
 
         return jwt.sign(
+            { id: userId },
+            jwtSecret,
             {
-                id: userId // payload
-            },
-            jwtSecret, // secret
-            {
-                expiresIn: process.env.JWT_EXPIRES_IN, // time to expire
+                expiresIn: jwtExpiresIn as any, // ép kiểu để bypass lỗi TypeScript
             }
         );
     }
@@ -40,7 +39,7 @@ export class AuthService {
         const existingUser = await this.userService.findByEmail(data.email);
 
         if (existingUser) {
-            throw new AppError("Email already in use", 400);
+            throw new AppError("Email đã được sử dụng", 400);
         }
 
         const hashedPassword = await this.passwordService.hashPassword(data.password);
@@ -54,14 +53,14 @@ export class AuthService {
 
     async login(email: string, password: string): Promise<User> {
         if (!email || !password) {
-            throw new AppError("Please provide email and password", 400);
+            throw new AppError("Vui lòng cung cấp email và mật khẩu", 400);
         }
 
         const user = await this.userService.findByEmail(email);
 
         if (!user || !user.isActive) {
             // 401 unauthorized
-            throw new AppError("Incorrect email or password", 401);
+            throw new AppError("Sai email hoặc mật khẩu", 401);
         }
 
         const isPasswordCorrect = await this.passwordService.comparePassword(
@@ -70,7 +69,7 @@ export class AuthService {
         );
 
         if (!isPasswordCorrect) {
-            throw new AppError("Incorrect email or password", 401);
+            throw new AppError("Sai email hoặc mật khẩu", 401);
         }
 
         return user;
@@ -89,7 +88,7 @@ export class AuthService {
         }
 
         if (!token) {
-            throw new AppError("You are not logged in, please login to get access", 401);
+            throw new AppError("Vui lòng đăng nhập để truy cập", 401);
         }
 
         const jwtSecret = process.env.JWT_SECRET;
@@ -104,7 +103,7 @@ export class AuthService {
             // verify token and get payload
             decoded = jwt.verify(token, jwtSecret) as JwtPayload;
         } catch {
-            throw new AppError("Invalid or expired token. Please log in again", 401);
+            throw new AppError("Vui lòng đăng nhập để truy cập", 401);
         }
 
         const currentUser = await this.userService.findOne(decoded.id);
@@ -120,7 +119,7 @@ export class AuthService {
                 decoded.iat
             )
         ) {
-            throw new AppError("User recently changed password! Please log in again", 401);
+            throw new AppError("Đã thay đổi mật khẩu gần đây! Vui lòng đăng nhập lại", 401);
         }
 
         return currentUser;
@@ -128,7 +127,7 @@ export class AuthService {
 
     checkRole(userRole: string, roles: string[]): void {
         if (!roles.includes(userRole)) {
-            throw new AppError("You do not have permission to perform this action", 403);
+            throw new AppError("Bạn không có quyền thực hiện hành động này", 403);
         }
     }
 
@@ -141,7 +140,7 @@ export class AuthService {
         const user = await this.userService.findOneWithPassword(userId);
 
         if (!user) {
-            throw new AppError("User not found", 404);
+            throw new AppError("Người dùng không tồn tại", 404);
         }
 
         const isCurrentPasswordCorrect = await this.passwordService.comparePassword(
@@ -150,11 +149,11 @@ export class AuthService {
         );
 
         if (!isCurrentPasswordCorrect) {
-            throw new AppError("Your current password is wrong", 401);
+            throw new AppError("Mật khẩu hiện tại của bạn sai", 401);
         }
 
         if (newPassword !== passwordConfirm) {
-            throw new AppError("Passwords do not match", 400);
+            throw new AppError("Mật khẩu không khớp", 400);
         }
 
         user.password = await this.passwordService.hashPassword(newPassword);
@@ -174,7 +173,7 @@ export class AuthService {
         const user = await this.userService.findByEmail(email);
 
         if (!user) {
-            throw new AppError("There is no user with that email address", 404);
+            throw new AppError("Không tồn tại người dùng với email này", 404);
         }
 
         const { rawToken, hashedToken, expiresAt } =
@@ -199,7 +198,7 @@ export class AuthService {
             user.passwordResetExpires = undefined;
             await this.userService.saveResetToken(user);
             throw new AppError(
-                "There was an error sending the email. Try again later!",
+                "Có lỗi xảy ra khi gửi email. Vui lòng thử lại sau!",
                 500
             );
         }
@@ -223,7 +222,7 @@ export class AuthService {
         }
 
         if (password !== passwordConfirm) {
-            throw new AppError("Passwords do not match", 400);
+            throw new AppError("Mật khẩu không khớp", 400);
         }
 
         user.password = await this.passwordService.hashPassword(password);
@@ -240,7 +239,7 @@ export class AuthService {
     async getme(userId: string): Promise<User> {
         const user = await this.userService.findOne(userId);
         if (!user) {
-            throw new AppError("User not found", 404);
+            throw new AppError("Người dùng không tồn tại", 404);
         }
 
         return user;

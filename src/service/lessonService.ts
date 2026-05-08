@@ -19,7 +19,7 @@ export class LessonService {
         });
 
         if (!course) {
-            throw new AppError("Course not found", 404);
+            throw new AppError("Khóa học không tồn tại", 404);
         }
 
         const { title } = lessonData;
@@ -37,7 +37,7 @@ export class LessonService {
         });
 
         if (!course) {
-            throw new Error("Course not found");
+            throw new AppError("Khóa học không tồn tại", 404);
         }
 
         return await this.lessonRepository.find({
@@ -62,7 +62,7 @@ export class LessonService {
         });
 
         if (!lesson) {
-            throw new Error("Lesson not found in this course");
+            throw new AppError("Bài học không tồn tại", 404);
         }
 
         return lesson;
@@ -81,7 +81,7 @@ export class LessonService {
         });
 
         if (!lesson) {
-            throw new Error("Lesson not found in this course");
+            throw new AppError("Bài học không tồn tại", 404);
         }
 
         Object.assign(lesson, updateData);
@@ -98,7 +98,7 @@ export class LessonService {
         });
 
         if (!lesson) {
-            throw new Error("Lesson not found in this course");
+            throw new AppError("Bài học không tồn tại", 404);
         }
 
         await this.lessonRepository.remove(lesson);

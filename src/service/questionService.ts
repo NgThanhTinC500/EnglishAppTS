@@ -15,6 +15,9 @@ export class QuestionService {
     private examRepository = AppDataSource.getRepository(Exam);
     private examQuestionRepository = AppDataSource.getRepository(ExamQuestion);
 
+
+    
+    // convert "A,B,C" => ["A", "B", "C"]
     private splitDictationAnswers(value: string | null | undefined) {
         return (value ?? "")
             .split(",")
@@ -22,10 +25,12 @@ export class QuestionService {
             .filter(Boolean);
     }
 
+    // convert to lower case
     private normalizeDictationAnswer(value: string) {
         return value.trim().toLowerCase();
     }
 
+    // mask transcript by replacing correct answers with [BLANK]
     private maskTranscript(transcript: string | null, correctAnswers: string[]) {
         if (!transcript) return transcript;
         if (transcript.includes("[BLANK]")) return transcript;
@@ -37,6 +42,9 @@ export class QuestionService {
         }, transcript);
     }
 
+
+    // convert Question entity to a safe object for API response 
+    // by removing correct answer and other sensitive info
     private toSafeQuestion(question: Question | null) {
         if (!question) return question;
 

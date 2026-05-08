@@ -2,6 +2,7 @@ import { Repository } from "typeorm";
 import { AppDataSource } from "../data-source";
 import { Lecture } from "../entity/Lectures";
 import { Lesson } from "../entity/Lesson";
+import { AppError } from "../utils/appError";
 
 export class LectureService {
     private lectureRepository: Repository<Lecture>;
@@ -18,7 +19,7 @@ export class LectureService {
         });
 
         if (!lessonExists) {
-            throw new Error("Lesson not found");
+            throw new AppError("Không tìm thấy bài học", 404);
         }
 
         const lecture = this.lectureRepository.create({
@@ -35,7 +36,7 @@ export class LectureService {
         });
 
         if (!lessonExists) {
-            throw new Error("Lesson not found");
+            throw new AppError("Không tìm thấy bài học", 404);
         }
 
         return await this.lectureRepository.find({
@@ -54,7 +55,7 @@ export class LectureService {
         });
 
         if (!lecture) {
-            throw new Error("Lecture not found in this lesson");
+            throw new AppError("Không tìm thấy bài giảng", 404);
         }
 
         return lecture;
@@ -73,7 +74,7 @@ export class LectureService {
         });
 
         if (!lecture) {
-            throw new Error("Lecture not found in this lesson");
+            throw new AppError("Không tìm thấy bài giảng", 404);
         }
 
         Object.assign(lecture, updateData);
@@ -90,7 +91,7 @@ export class LectureService {
         });
 
         if (!lecture) {
-            throw new Error("Lecture not found in this lesson");
+            throw new AppError("Không tìm thấy bài giảng", 404);
         }
 
         await this.lectureRepository.remove(lecture);

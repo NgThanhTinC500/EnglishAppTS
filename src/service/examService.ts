@@ -66,7 +66,7 @@ export class ExamService {
         const topic = await this.topicRepository.findOne({
             where: { id: topicId }
         });
-        if ( !topic ) 
+        if (!topic)
             throw new AppError("Topic not found", 404);
         const { title, duration } = examData;
 
@@ -90,7 +90,7 @@ export class ExamService {
     // Service
     async getExamDetail(topicId: number, examId: number) {
         const exam = await this.examRepository.findOne({
-            where: { topicId: topicId, id: examId },
+            where: { topicId, id: examId },
             relations: {
                 examQuestions: {
                     question: {
@@ -99,16 +99,20 @@ export class ExamService {
                 }
             }
         });
-        if (!exam) {
-            throw new AppError("Ko co exam", 404)
-        }
+
+        if (!exam) throw new AppError("Exam not found", 404);
+
+        const { examQuestions, ...examInfo } = exam;
+
         return {
-            ...exam,
-            examQuestions: exam.examQuestions?.map(examQuestion => ({
-                ...examQuestion,
-                question: this.toSafeQuestion(examQuestion.question)
-            })) ?? []
-        }
+            ...examInfo,
+            questions: examQuestions
+                .sort((a, b) => a.orderIndex - b.orderIndex)
+                .map(eq => ({
+                    orderIndex: eq.orderIndex,
+                    ...this.toSafeQuestion(eq.question)
+                }))
+        };
     }
 
     async toggleExamActive(topicId: number, examId: number) {
@@ -116,32 +120,43 @@ export class ExamService {
             where: { topicId, id: examId }
         });
         if (!exam) {
-            throw new AppError("Ko co exam", 404);
+            throw new AppError("Exam not found", 404);
         }
         exam.isActive = !exam.isActive;
 
         return await this.examRepository.save(exam);
     }
 
-    async updateExam(topicId: number, examId: number, updateData: Partial<Exam>) {
+    async updateExam(
+        topicId: number,
+        examId: number,
+        updateData: Partial<Exam>
+    ) {
         const exam = await this.examRepository.findOne({
             where: { topicId, id: examId }
         });
+
         if (!exam) {
-            throw new AppError("Ko co exam", 404);
+            throw new AppError("Exam not found", 404);
         }
-        const allowedFields = ["title", "description", "totalQuestions", "duration"];
+
+        const allowedFields: (keyof Exam)[] = [
+            "title",
+            "duration",
+            "isActive"
+        ];
 
         const filteredData = Object.fromEntries(
-            // Object.entries(updateData) — chuyển object thành mảng [key, value]
-            Object.entries(updateData).filter(([key]) =>
-                allowedFields.includes(key)
+            Object.entries(updateData).filter(
+                ([key, value]) =>
+                    allowedFields.includes(key as keyof Exam) &&
+                    value !== undefined
             )
         );
 
-        // copy từ updateData vào exam
         Object.assign(exam, filteredData);
-        return await this.examRepository.save(exam);
+
+        return this.examRepository.save(exam);
     }
 
 
@@ -157,11 +172,13 @@ export class ExamService {
         Object.assign(question, updateData);
         return await this.questionRepository.save(question)
     }
+    
     async deleteQuestion(questionId: number): Promise<boolean> {
         const result = await this.questionRepository.delete(questionId);
         // tra ve true neu co it nhat 1 dong dc update
         return result.affected > 0;
     }
+    
     async getExamWithQuestions(examId: number): Promise<Exam | null> {
         return await this.examRepository.findOne({
             where: { id: examId },

@@ -15,30 +15,29 @@ import { User } from "./User";
 @Entity("vocabulary_sets")
 export class VocabularySet {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ type: "varchar", length: 255 })
-  name: string;
+  name!: string;
 
   @Column({ nullable: true })
-  tag: string;
+  tag!: string | null;
 
   @Column()
-  userId: string;
+  userId!: string;
 
   @ManyToOne(() => User, (user) => user.vocabularySets, {
-    nullable: true,
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "userId" })
-  user: User;
+  user!: User;
 
-  @OneToMany(() => Vocabulary, (vocabulary) => vocabulary.vocabSet)
-  vocabularies: Vocabulary[];
+  @OneToMany(() => Vocabulary, (vocabulary) => vocabulary.vocabularySet)
+  vocabularies!: Vocabulary[];
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

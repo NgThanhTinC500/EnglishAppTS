@@ -1,5 +1,6 @@
 import { AppDataSource } from "../data-source";
 import { Comment } from "../entity/Comment";
+import { AppError } from "../utils/appError";
 
 export class CommentService {
     private commentRepository = AppDataSource.getRepository(Comment);
@@ -19,11 +20,11 @@ export class CommentService {
             });
 
             if (!parent) {
-                throw new Error("Không tìm thấy comment cha");
+                throw new AppError("Không tìm thấy comment cha", 404);
             }
 
             if (parent.parentCommentId) {
-                throw new Error("Chỉ hỗ trợ reply 2 cấp");
+                throw new AppError("Chỉ hỗ trợ reply 2 cấp", 400);
             }
         }
 

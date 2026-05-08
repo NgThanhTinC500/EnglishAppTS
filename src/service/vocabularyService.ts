@@ -1,88 +1,196 @@
 import { AppDataSource } from "../data-source";
-
 import { VocabularySet } from "../entity/VocabularySet";
 import { Vocabulary } from "../entity/Vocabulary";
-
+import { AppError } from "../utils/appError";
 export class VocabularyService {
-    private vocabSetRepository = AppDataSource.getRepository(VocabularySet)
-    private vocabRepository = AppDataSource.getRepository(Vocabulary)
+    private vocabularySetRepository = AppDataSource.getRepository(VocabularySet);
 
-    // CONTROLLER WITH FLASH CARD DECK
-    async createVocabSets(deckData: Partial<VocabularySet>) {
-        const flashcardDeck = this.vocabSetRepository.create(deckData)
-        return this.vocabSetRepository.save(flashcardDeck)
-    }
+    private vocabularyRepository = AppDataSource.getRepository(Vocabulary);
 
-    async getAllVocabSets(userId: string) {
-        return await this.vocabSetRepository.find({
-            where: { userId }
-        })
-    }
-    async getVocabSetById(vocabsetsId: number) {
-        return await this.vocabSetRepository.findOne({
-            where: { id: vocabsetsId }
-        })
-    }
-
-    async updateVocabSets(deckData: Partial<VocabularySet>, vocabsetsId: number) {
-        const deck = await this.vocabSetRepository.findOne({
-            where: { id: vocabsetsId }
+    private async findVocabularySetOrFail(
+        userId: string,
+        setId: number,
+        relations?: { vocabularies?: boolean }
+    ) {
+        const vocabularySet = await this.vocabularySetRepository.findOne({
+            where: { id: setId, userId },
+            relations,
         });
-        if (!deck) {
-            return null;
+
+        if (!vocabularySet) {
+            throw new AppError("Vocabulary bộ không tồn tại", 404);
         }
-        // copy tu deckData vao deck
-        // gan tu phai qua trai
-        Object.assign(deck, deckData)
-        // sau khi copy xong cần phải luu
-        return await this.vocabSetRepository.save(deck)
+
+        return vocabularySet;
     }
 
-    async deleteVocabSets(vocabsetsId: number) {
-        return this.vocabSetRepository.delete(vocabsetsId)
+    private async findVocabularyOrFail(
+        userId: string,
+        setId: number,
+        vocabularyId: number
+    ) {
+        await this.findVocabularySetOrFail(userId, setId);
+
+        const vocabulary = await this.vocabularyRepository.findOne({
+            where: {
+                id: vocabularyId,
+                vocabSetId: setId,
+            },
+        });
+
+        if (!vocabulary) {
+            throw new AppError("Vocabulary không tồn tại", 404);
+        }
+
+        return vocabulary;
     }
 
+    /*
+        =========================
+        VOCABULARY SET
+        =========================
+    */
 
-    // CONTROLLER WITH FLASH CARD
+    async createVocabularySet(userId: string, data: Partial<VocabularySet>) {
+        if (!data.name?.trim()) {
+            throw new AppError("Set name is required", 400);
+        }
 
-    async getAllVocab(vocabsetsId: number) {
-        return await this.vocabSetRepository.findOne({
-            where: { id: vocabsetsId },
-            relations: {
-                vocabularies: true
-            }
-        })
+        const vocabularySet = this.vocabularySetRepository.create({
+            name: data.name.trim(),
+            tag: data.tag?.trim() || null,
+            userId,
+        });
+
+        return this.vocabularySetRepository.save(vocabularySet);
     }
 
-    async createVocabCard(vocabsetsId: number, flashcardData: Partial<Vocabulary>) {
-        const { word, meaning, pronunciation, example } = flashcardData;
-        const flashcard = this.vocabRepository.create({
-            vocabSetId: vocabsetsId,
-            word,
-            meaning,
-            pronunciation,
-            example,
-        })
-        return this.vocabRepository.save(flashcard)
+    async getAllVocabularySets(userId: string) {
+        return this.vocabularySetRepository.find({
+            where: { userId }
+        });
     }
 
-    async updateVocabCard(cardId: number, flashcardData: Partial<Vocabulary>) {
-        const flashcard = await this.vocabRepository.findOne({
-            where: { id: cardId }
-        })
-
-        Object.assign(flashcard, flashcardData)
-        return await this.vocabRepository.save(flashcard)
+    async getVocabularySetById(userId: string, setId: number) {
+        return this.findVocabularySetOrFail(userId, setId, {
+            vocabularies: true,
+        });
     }
 
-    async deleteVocabCard(cardId: number) {
-        return this.vocabRepository.delete(cardId)
+    async updateVocabularySet(
+        userId: string,
+        setId: number,
+        data: Partial<VocabularySet>
+    ) {
+        const vocabularySet = await this.findVocabularySetOrFail(userId, setId);
+
+        if (data.name !== undefined && !data.name.trim()) {
+            throw new AppError("Set name cannot be empty", 400);
+        }
+
+        Object.assign(vocabularySet, {
+            name: data.name?.trim() ?? vocabularySet.name,
+            tag: data.tag === undefined ? vocabularySet.tag : data.tag?.trim() || null,
+        });
+
+        return this.vocabularySetRepository.save(vocabularySet);
     }
 
-    async getVocabCardDetail(vocabsetsId: number, cardId: number) {
-        return await this.vocabRepository.findOne({
-            where: { id: cardId, vocabSetId: vocabsetsId }
-        })
+    async deleteVocabularySet(userId: string, setId: number) {
+        const vocabularySet = await this.findVocabularySetOrFail(userId, setId);
+        await this.vocabularySetRepository.remove(vocabularySet);
     }
 
+    /*
+        =========================
+        VOCABULARY
+        =========================
+    */
+
+    async getVocabulariesBySetId(userId: string, setId: number) {
+        const vocabularySet = await this.findVocabularySetOrFail(userId, setId, {
+            vocabularies: true,
+        });
+        return vocabularySet.vocabularies;
+    }
+
+    async createVocabulary(
+        userId: string,
+        setId: number,
+        data: Partial<Vocabulary>
+    ) {
+        await this.findVocabularySetOrFail(userId, setId);
+
+        if (!data.word?.trim()) {
+            throw new AppError("Word is required", 400);
+        }
+
+        if (!data.meaning?.trim()) {
+            throw new AppError("Meaning is required", 400);
+        }
+
+        const vocabulary = this.vocabularyRepository.create({
+            vocabSetId: setId,
+            word: data.word.trim(),
+            meaning: data.meaning.trim(),
+            pronunciation: data.pronunciation?.trim() || null,
+            example: data.example?.trim() || null,
+        });
+
+        return this.vocabularyRepository.save(vocabulary);
+    }
+
+    async getVocabularyDetail(
+        userId: string,
+        setId: number,
+        vocabularyId: number
+    ) {
+        return this.findVocabularyOrFail(userId, setId, vocabularyId);
+    }
+
+    async updateVocabulary(
+        userId: string,
+        setId: number,
+        vocabularyId: number,
+        data: Partial<Vocabulary>
+    ) {
+        const vocabulary = await this.findVocabularyOrFail(
+            userId,
+            setId,
+            vocabularyId
+        );
+
+        if (data.word !== undefined && !data.word.trim()) {
+            throw new AppError("Word cannot be empty", 400);
+        }
+
+        if (data.meaning !== undefined && !data.meaning.trim()) {
+            throw new AppError("Meaning cannot be empty", 400);
+        }
+
+        Object.assign(vocabulary, {
+            word: data.word?.trim() ?? vocabulary.word,
+            meaning: data.meaning?.trim() ?? vocabulary.meaning,
+            pronunciation:
+                data.pronunciation === undefined
+                    ? vocabulary.pronunciation
+                    : data.pronunciation?.trim() || null,
+            example: data.example === undefined ? vocabulary.example : data.example?.trim() || null,
+        });
+
+        return this.vocabularyRepository.save(vocabulary);
+    }
+
+    async deleteVocabulary(
+        userId: string,
+        setId: number,
+        vocabularyId: number
+    ) {
+        const vocabulary = await this.findVocabularyOrFail(
+            userId,
+            setId,
+            vocabularyId
+        );
+        await this.vocabularyRepository.remove(vocabulary);
+    }
 }
