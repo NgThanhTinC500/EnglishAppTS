@@ -1,6 +1,5 @@
 import { AppDataSource } from "../data-source";
 import { Exam } from "../entity/Exam";
-import { Repository } from "typeorm";
 import { Question } from "../entity/Question";
 import { QuestionOption } from "../entity/QuestionOption";
 import * as fs from 'fs';
@@ -62,7 +61,7 @@ export class ExamService {
 
     // Partial
     // tham số examData chứa một phần field của entity Exam
-    async createExam(topicId: number, examData: any) {
+    async createExam(topicId: number, examData: Pick<Exam, "title" | "duration">) {
         const topic = await this.topicRepository.findOne({
             where: { id: topicId }
         });

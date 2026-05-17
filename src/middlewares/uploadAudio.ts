@@ -1,6 +1,7 @@
 import multer from 'multer';
 import * as path from "path";
 import * as fs from "fs";
+import { Request } from "express";
 import { v4 as uuidv4 } from "uuid";
 
 // __dirname là thư mục hiện tại: src/middlewares
@@ -22,7 +23,7 @@ const storage = multer.diskStorage({
 });
 
 // File filter - chỉ cho phép audio files
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     // Các định dạng audio cho phép
     const allowedMimes = [
         'audio/mpeg',      // .mp3

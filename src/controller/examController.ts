@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { ExamService } from "../service/examService";
-import * as fs from "fs";
 import catchAsync from "../utils/catchAsync";
 
 

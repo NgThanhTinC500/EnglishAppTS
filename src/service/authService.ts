@@ -25,7 +25,7 @@ export class AuthService {
             { id: userId },
             jwtSecret,
             {
-                expiresIn: jwtExpiresIn as any, // ép kiểu để bypass lỗi TypeScript
+                expiresIn: jwtExpiresIn,
             }
         );
     }

@@ -21,7 +21,6 @@ import lectureRouter from "./router/LectureRouter";
 import commentRouter from './router/commenRouter';
 dotenv.config();
 import { createServer } from "http";
-import { Server } from "socket.io";
 import { initSocket } from "./socket/index";
 
 console.log('NODE_ENV =', process.env.NODE_ENV);

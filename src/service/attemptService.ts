@@ -52,6 +52,20 @@ export class AttemptService {
         };
     }
 
+    private escapeRegExp(value: string) {
+        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    private buildMaskedTranscript(question: Question) {
+        if (question.type !== QuestionType.DICTATION || !question.transcript || !question.dictationAnswer) {
+            return undefined;
+        }
+        return question.transcript.replace(
+            new RegExp(this.escapeRegExp(question.dictationAnswer), "i"),
+            "[BLANK]"
+        );
+    }
+
     private toQuestionForAttempt(question: Question) {
         return {
             id: question.id,
@@ -61,6 +75,7 @@ export class AttemptService {
             audioFileName: question.audioFileName,
             audioDuration: question.audioDuration,
             transcript: question.showTranscript ? question.transcript : undefined,
+            maskedTranscript: this.buildMaskedTranscript(question),
             showTranscript: question.showTranscript,
             options: question.options?.map((option) => ({
                 id: option.id,
@@ -170,8 +185,15 @@ export class AttemptService {
 
         return {
             answerId: savedAnswer.id,
+            selectedOptionId: selectedOption.id,
+            selectedOption: selectedOption
+                ? { id: selectedOption.id, label: selectedOption.label, content: selectedOption.content }
+                : null,
             isCorrect: selectedOption.isCorrect,
-            correctOptionId: correctOption?.id,
+            correctOptionId: correctOption?.id ?? null,
+            correctOption: correctOption
+                ? { id: correctOption.id, label: correctOption.label, content: correctOption.content }
+                : null,
             explanation: question?.explanation ?? null,
             transcript: question?.transcript ?? null,
         };
@@ -214,7 +236,6 @@ export class AttemptService {
         answer.answerText = answerText;
         answer.correctAnswerText = question.dictationAnswer;
         answer.selectedOptionId = null;
-        answer.correctOptionId = null;
         answer.result = result;
         answer.answeredAt = new Date();
 
@@ -294,7 +315,7 @@ export class AttemptService {
                 selectedOptionId: item.selectedOptionId,
                 selectedOption: item.selectedOption,
                 answerText: item.answerText,
-                correctOptionId: item.correctOptionId,
+                correctOptionId: item.question?.options?.find((option) => option.isCorrect)?.id ?? null,
                 correctAnswerText: item.correctAnswerText,
                 result: item.result,
                 explanation: item.question?.explanation

@@ -73,15 +73,27 @@ export class BlogController {
         });
     });
 
-    private pickBlogPayload(body: Record<string, any>, isCreate: boolean) {
-        const payload: Record<string, any> = {
-            tag: body.tag || body.category,
-            category: body.category,
-            slug: body.slug || undefined,
-            title: body.title,
-            excerpt: body.excerpt,
-            content: body.content,
-            readingTimeMinutes: Number(body.readingTimeMinutes || 5),
+    private pickBlogPayload(body: Record<string, unknown>, isCreate: boolean) {
+        const tag = typeof body.tag === "string"
+            ? body.tag
+            : typeof body.category === "string"
+                ? body.category
+                : undefined;
+        const category = typeof body.category === "string" ? body.category : undefined;
+        const slug = typeof body.slug === "string" ? body.slug : undefined;
+        const title = typeof body.title === "string" ? body.title : undefined;
+        const excerpt = typeof body.excerpt === "string" ? body.excerpt : undefined;
+        const content = typeof body.content === "string" ? body.content : undefined;
+        const readingTimeMinutes = Number(body.readingTimeMinutes ?? 5);
+
+        const payload: Record<string, unknown> = {
+            tag,
+            category,
+            slug,
+            title,
+            excerpt,
+            content,
+            readingTimeMinutes,
         };
 
         if (body.isPublished !== undefined) {

@@ -1,6 +1,7 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { NextFunction, Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 
 // Tạo thư mục lưu hình
@@ -22,7 +23,7 @@ const storage = multer.diskStorage({
 });
 
 // Chỉ cho phép hình ảnh
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedMimes = [
         "image/jpeg",
         "image/jpg",
@@ -51,7 +52,7 @@ export const uploadImage = multer({
 export const uploadImageSingle = uploadImage.single("image");
 
 // Middleware xử lý lỗi upload
-export const handleUploadImageError = (err: any, req: any, res: any, next: any) => {
+export const handleUploadImageError = (err: unknown, _req: Request, res: Response, next: NextFunction) => {
     if (err instanceof multer.MulterError) {
         if (err.code === "LIMIT_FILE_SIZE") {
             return res.status(400).json({
@@ -66,9 +67,10 @@ export const handleUploadImageError = (err: any, req: any, res: any, next: any) 
     }
 
     if (err) {
+        const message = err instanceof Error ? err.message : "Unknown upload error";
         return res.status(400).json({
             success: false,
-            message: err.message
+            message
         });
     }
 
