@@ -45,12 +45,10 @@ export class LessonController {
     });
 
     updateLesson = catchAsync(async (req: Request, res: Response) => {
-        const courseId = Number(req.params.courseId);
         const lessonId = Number(req.params.lessonId);
         const updateData = req.body;
 
         const updatedLesson = await this.lessonService.updateLesson(
-            courseId,
             lessonId,
             updateData
         );
@@ -63,10 +61,9 @@ export class LessonController {
     });
 
     deleteLesson = catchAsync(async (req: Request, res: Response) => {
-        const courseId = Number(req.params.courseId);
         const lessonId = Number(req.params.lessonId);
 
-        await this.lessonService.deleteLesson(courseId, lessonId);
+        await this.lessonService.deleteLesson(lessonId);
 
         res.status(200).json({
             success: true,

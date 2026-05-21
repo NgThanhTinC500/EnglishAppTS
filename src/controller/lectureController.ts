@@ -60,16 +60,14 @@ export class LectureController {
     });
 
     updateLecture = catchAsync(async (req: Request, res: Response) => {
-        const lessonId = Number(req.params.lessonId);
         const lectureId = Number(req.params.lectureId);
 
-        if (isNaN(lessonId) || isNaN(lectureId)) {
+        if (isNaN(lectureId)) {
             throw new Error("Invalid id");
         }
 
         const updateData = req.body;
         const updatedLecture = await this.lectureService.updateLecture(
-            lessonId,
             lectureId,
             updateData
         );
@@ -82,14 +80,13 @@ export class LectureController {
     });
 
     deleteLecture = catchAsync(async (req: Request, res: Response) => {
-        const lessonId = Number(req.params.lessonId);
         const lectureId = Number(req.params.lectureId);
 
-        if (isNaN(lessonId) || isNaN(lectureId)) {
+        if (isNaN(lectureId)) {
             throw new Error("Invalid id");
         }
 
-        await this.lectureService.deleteLecture(lessonId, lectureId);
+        await this.lectureService.deleteLecture(lectureId);
 
         res.status(200).json({
             success: true,

@@ -13,7 +13,17 @@ export class LessonService {
         this.courseRepository = AppDataSource.getRepository(Course);
     }
 
+    private ensurePositiveInteger(value: number, fieldName: string) {
+        if (!Number.isInteger(value) || value <= 0) {
+            throw new AppError(`${fieldName} must be a positive integer`, 400);
+        }
+    }
+
     async createLesson(courseId: number, lessonData: Partial<Lesson>): Promise<Lesson> {
+        this.ensurePositiveInteger(courseId, "courseId");
+        const title = lessonData.title?.trim();
+        if (!title) throw new AppError("Lesson title is required", 400);
+
         const course = await this.courseRepository.findOne({
             where: { id: courseId }
         });
@@ -22,7 +32,6 @@ export class LessonService {
             throw new AppError("Khóa học không tồn tại", 404);
         }
 
-        const { title } = lessonData;
         const lesson = this.lessonRepository.create({
             title,
             courseId: courseId
@@ -32,6 +41,8 @@ export class LessonService {
     }
 
     async getLessonsByCourse(courseId: number): Promise<Lesson[]> {
+        this.ensurePositiveInteger(courseId, "courseId");
+
         const course = await this.courseRepository.findOne({
             where: { id: courseId }
         });
@@ -55,9 +66,14 @@ export class LessonService {
     }
 
     async getLessonById(lessonId: number): Promise<Lesson> {
+        this.ensurePositiveInteger(lessonId, "lessonId");
+
         const lesson = await this.lessonRepository.findOne({
             where: {
                 id: lessonId,
+            },
+            relations: {
+                lectures: true
             }
         });
 
@@ -69,14 +85,14 @@ export class LessonService {
     }
 
     async updateLesson(
-        courseId: number,
         lessonId: number,
         updateData: Partial<Lesson>
     ): Promise<Lesson> {
+        this.ensurePositiveInteger(lessonId, "lessonId");
+
         const lesson = await this.lessonRepository.findOne({
             where: {
                 id: lessonId,
-                courseId
             }
         });
 
@@ -84,16 +100,21 @@ export class LessonService {
             throw new AppError("Bài học không tồn tại", 404);
         }
 
-        Object.assign(lesson, updateData);
+        if (updateData.title !== undefined) {
+            const title = updateData.title.trim();
+            if (!title) throw new AppError("Lesson title is required", 400);
+            lesson.title = title;
+        }
 
         return await this.lessonRepository.save(lesson);
     }
 
-    async deleteLesson(courseId: number, lessonId: number): Promise<void> {
+    async deleteLesson(lessonId: number): Promise<void> {
+        this.ensurePositiveInteger(lessonId, "lessonId");
+
         const lesson = await this.lessonRepository.findOne({
             where: {
                 id: lessonId,
-                courseId
             }
         });
 
