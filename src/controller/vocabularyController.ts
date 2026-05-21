@@ -128,6 +128,49 @@ export class VocabularyController {
         ======================
     */
 
+    getVocabularyPracticeItems = catchAsync(
+        async (req: Request, res: Response) => {
+            const userId = String(req.user?.id);
+            const setId = this.parseId(req.params.topicId, "topicId");
+
+            const result = await this.vocabularyService.getVocabularyPracticeItems(
+                userId,
+                setId
+            );
+
+            res.status(200).json({
+                success: true,
+                total: result.length,
+                data: result,
+                message: "Get vocabulary practice items successfully",
+            });
+        }
+    );
+
+    checkVocabularyPracticeAnswer = catchAsync(
+        async (req: Request, res: Response) => {
+            const userId = String(req.user?.id);
+            const vocabularyId = this.parseId(
+                String(req.body?.vocabularyId),
+                "vocabularyId"
+            );
+            const answerText = String(req.body?.answerText ?? "");
+
+            const result =
+                await this.vocabularyService.checkVocabularyPracticeAnswer(
+                    userId,
+                    vocabularyId,
+                    answerText
+                );
+
+            res.status(200).json({
+                success: true,
+                data: result,
+                message: "Check vocabulary answer successfully",
+            });
+        }
+    );
+
     createVocabulary = catchAsync(
         async (req: Request, res: Response) => {
             const userId = String(req.user?.id);

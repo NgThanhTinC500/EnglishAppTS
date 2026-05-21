@@ -2,19 +2,24 @@ import { AppDataSource } from "../data-source";
 import { Question, QuestionCategory, QuestionType } from "../entity/Question";
 import { QuestionOption } from "../entity/QuestionOption";
 
-import { Topic } from "../entity/Topic";
 import { Exam } from "../entity/Exam";
 import { ExamQuestion } from "../entity/ExamQuestion";
 import { AppError } from "../utils/appError";
 
 export class QuestionService {
     private questionRepository = AppDataSource.getRepository(Question);
-    private optionRepository = AppDataSource.getRepository(QuestionOption);
-    private topicRepository = AppDataSource.getRepository(Topic);
     private examRepository = AppDataSource.getRepository(Exam);
     private examQuestionRepository = AppDataSource.getRepository(ExamQuestion);
 
+    private ensurePositiveInteger(value: number, fieldName: string) {
+        if (!Number.isInteger(value) || value <= 0) {
+            throw new AppError(`${fieldName} must be a positive integer`, 400);
+        }
+    }
 
+    private escapeRegExp(value: string) {
+        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
 
     // convert "A,B,C" => ["A", "B", "C"]
     private splitDictationAnswers(value: string | null | undefined) {
@@ -24,9 +29,14 @@ export class QuestionService {
             .filter(Boolean);
     }
 
-    // convert to lower case
+    // Normalize dictation answers before comparing them.
     private normalizeDictationAnswer(value: string) {
-        return value.trim().toLowerCase();
+        return value
+            .trim()
+            .toLowerCase()
+            .replace(/[|\n\r]+/g, " ")
+            .replace(/[.,!?;:"'()]/g, "")
+            .replace(/\s+/g, " ");
     }
 
     // mask transcript by replacing correct answers with [BLANK]
@@ -39,9 +49,45 @@ export class QuestionService {
 
         return correctAnswers.reduce((maskedTranscript, answer) => {
             if (!answer) return maskedTranscript;
-            const escapedAnswer = answer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            return maskedTranscript.replace(new RegExp(`\\b${escapedAnswer}\\b`, "i"), "[BLANK]");
+            const escapedAnswer = this.escapeRegExp(answer);
+            const pattern = new RegExp(`(^|[\\s.,!?;:"'()])(${escapedAnswer})(?=$|[\\s.,!?;:"'()])`, "i");
+
+            return maskedTranscript.replace(pattern, (_match, prefix) => `${prefix}[BLANK]`);
         }, transcript);
+    }
+
+    private validateQuestionType(value: QuestionType) {
+        if (!Object.values(QuestionType).includes(value)) {
+            throw new AppError("Invalid question type", 400);
+        }
+    }
+
+    private validateQuestionCategory(value: QuestionCategory) {
+        if (!Object.values(QuestionCategory).includes(value)) {
+            throw new AppError("Invalid question category", 400);
+        }
+    }
+
+    private validateSingleChoiceOptions(options: {
+        label: string;
+        content: string;
+        isCorrect: boolean;
+    }[]) {
+        if (!Array.isArray(options) || options.length < 2) {
+            throw new AppError("At least 2 options required", 400);
+        }
+
+        const hasInvalidOption = options.some(
+            (option) => !option.label?.trim() || !option.content?.trim()
+        );
+        if (hasInvalidOption) {
+            throw new AppError("Option label and content are required", 400);
+        }
+
+        const correctCount = options.filter((option) => option.isCorrect).length;
+        if (correctCount !== 1) {
+            throw new AppError("Must have exactly 1 correct answer", 400);
+        }
     }
 
 
@@ -98,19 +144,15 @@ export class QuestionService {
             const examQuestionRepo = manager.getRepository(ExamQuestion);
             const questionType = data.type ?? QuestionType.SINGLE_CHOICE;
             const questionCategory = data.category ?? QuestionCategory.GRAMMAR;
+            this.validateQuestionType(questionType);
+            this.validateQuestionCategory(questionCategory);
 
             // ===== VALIDATE =====
             if (questionType === QuestionType.SINGLE_CHOICE) {
                 if (!data.content || data.content.trim() === "") {
                     throw new AppError("Question content is required", 400);
                 }
-                if (!data.options || data.options.length < 2) {
-                    throw new AppError("At least 2 options required", 400);
-                }
-                const correctCount = data.options.filter(o => o.isCorrect).length;
-                if (correctCount !== 1) {
-                    throw new AppError("Must have exactly 1 correct answer", 400);
-                }
+                this.validateSingleChoiceOptions(data.options ?? []);
             }
 
             if (questionType === QuestionType.DICTATION) {
@@ -147,8 +189,8 @@ export class QuestionService {
                 const options = data.options.map(opt =>
                     optionRepo.create({
                         questionId: savedQuestion.id,
-                        label: opt.label.toUpperCase(),
-                        content: opt.content,
+                        label: opt.label.trim().toUpperCase(),
+                        content: opt.content.trim(),
                         isCorrect: opt.isCorrect,
                     })
                 );
@@ -156,17 +198,19 @@ export class QuestionService {
             }
 
             // ===== ADD TO EXAM (optional) =====
-            if (data.examId) {
-                const exam = await examRepo.findOne({ where: { id: data.examId } });
+            if (data.examId !== undefined) {
+                const examId = Number(data.examId);
+                this.ensurePositiveInteger(examId, "examId");
+                const exam = await examRepo.findOne({ where: { id: examId } });
                 if (!exam) throw new AppError("Exam not found", 404);
 
                 const last = await examQuestionRepo.findOne({
-                    where: { examId: data.examId },
+                    where: { examId },
                     order: { orderIndex: "DESC" }
                 });
 
                 await examQuestionRepo.save(examQuestionRepo.create({
-                    examId: data.examId,
+                    examId,
                     questionId: savedQuestion.id,
                     orderIndex: last ? last.orderIndex + 1 : 1
                 }));
@@ -255,6 +299,7 @@ export class QuestionService {
         questionId: number,
         data: {
             type?: QuestionType;
+            category?: QuestionCategory;
             content?: string;
             explanation?: string;
             audioUrl?: string | null;
@@ -286,37 +331,39 @@ export class QuestionService {
             }
 
             const nextType = data.type ?? question.type;
+            const nextCategory = data.category ?? question.category;
+            this.validateQuestionType(nextType);
+            this.validateQuestionCategory(nextCategory);
             const nextContent = nextType === QuestionType.DICTATION
                 ? data.transcript ?? question.transcript ?? data.content ?? question.content
                 : data.content ?? question.content;
+            const nextOptions = data.options ?? question.options ?? [];
 
             if (nextType === QuestionType.SINGLE_CHOICE && (!nextContent || nextContent.trim() === "")) {
                 throw new AppError("Question content is required", 400);
             }
 
             if (nextType === QuestionType.SINGLE_CHOICE) {
-                if (!data.options || data.options.length < 2) {
-                    throw new AppError("At least 2 options required", 400);
-                }
-
-                const correctCount = data.options.filter((option) => option.isCorrect).length;
-                if (correctCount !== 1) {
-                    throw new AppError("Must have exactly 1 correct answer", 400);
-                }
+                this.validateSingleChoiceOptions(nextOptions);
             }
 
             if (nextType === QuestionType.DICTATION) {
                 const nextDictationAnswer = data.dictationAnswer ?? question.dictationAnswer;
                 const nextTranscript = data.transcript ?? question.transcript;
+                const nextAudioUrl = data.audioUrl === undefined ? question.audioUrl : data.audioUrl;
                 if (!nextDictationAnswer?.trim()) {
                     throw new AppError("Dictation answer is required", 400);
                 }
                 if (!nextTranscript?.trim()) {
                     throw new AppError("Transcript is required for dictation", 400);
                 }
+                if (!nextAudioUrl) {
+                    throw new AppError("Audio is required for dictation", 400);
+                }
             }
 
             question.type = nextType;
+            question.category = nextCategory;
             question.content = nextType === QuestionType.DICTATION
                 ? (data.transcript ?? nextContent)?.trim() ?? null
                 : nextContent?.trim() ?? null;
@@ -334,16 +381,18 @@ export class QuestionService {
             const savedQuestion = await questionRepo.save(question);
 
             if (nextType === QuestionType.SINGLE_CHOICE) {
-                await optionRepo.delete({ questionId });
-                const options = data.options!.map((option) =>
-                    optionRepo.create({
-                        questionId,
-                        label: option.label.toUpperCase(),
-                        content: option.content,
-                        isCorrect: option.isCorrect,
-                    })
-                );
-                await optionRepo.save(options);
+                if (data.options) {
+                    await optionRepo.delete({ questionId });
+                    const options = data.options.map((option) =>
+                        optionRepo.create({
+                            questionId,
+                            label: option.label.trim().toUpperCase(),
+                            content: option.content.trim(),
+                            isCorrect: option.isCorrect,
+                        })
+                    );
+                    await optionRepo.save(options);
+                }
             } else {
                 await optionRepo.delete({ questionId });
             }

@@ -5,8 +5,31 @@ import catchAsync from "../utils/catchAsync";
 export class QuestionController {
     private questionService = new QuestionService();
 
+    private normalizeQuestionPayload(req: Request) {
+        const payload: Record<string, any> = { ...req.body };
+
+        if (typeof payload.options === "string") {
+            payload.options = JSON.parse(payload.options);
+        }
+
+        if (typeof payload.showTranscript === "string") {
+            payload.showTranscript = payload.showTranscript === "true";
+        }
+
+        if (payload.examId !== undefined) {
+            payload.examId = Number(payload.examId);
+        }
+
+        if (req.file) {
+            payload.audioUrl = `/uploads/audio/${req.file.filename}`;
+            payload.audioFileName = req.file.originalname;
+        }
+
+        return payload;
+    }
+
     createQuestion = catchAsync(async (req: Request, res: Response) => {
-        const result = await this.questionService.createQuestion(req.body);
+        const result = await this.questionService.createQuestion(this.normalizeQuestionPayload(req));
         res.status(201).json({
             success: true,
             data: result,
@@ -72,7 +95,7 @@ export class QuestionController {
             res.status(400).json({ success: false, message: "Invalid questionId" });
             return;
         }
-        const result = await this.questionService.updateQuestion(questionId, req.body);
+        const result = await this.questionService.updateQuestion(questionId, this.normalizeQuestionPayload(req));
         res.status(200).json({
             success: true,
             data: result,

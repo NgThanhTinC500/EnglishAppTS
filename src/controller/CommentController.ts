@@ -70,10 +70,35 @@ export class CommentController {
                 message: "lectureId không hợp lệ",
             });
         }
-        const comments = await this.commentService.getCommentsByLectureId(lectureId);
+        const comments = await this.commentService.getCommentsByLectureId(lectureId, req.user?.id);
         res.status(200).json({
             success: true,
             data: comments,
+        });
+    })
+
+    toggleLike = catchAsync(async (req: Request, res: Response) => {
+        const commentId = Number(req.params.commentId);
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Ban chua dang nhap",
+            });
+        }
+
+        if (Number.isNaN(commentId)) {
+            return res.status(400).json({
+                success: false,
+                message: "commentId khong hop le",
+            });
+        }
+
+        const comment = await this.commentService.toggleLike(commentId, userId);
+        res.status(200).json({
+            success: true,
+            data: comment,
         });
     })
 }

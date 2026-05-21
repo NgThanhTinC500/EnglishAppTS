@@ -26,11 +26,11 @@ export class AuthController {
     };
 
     res.cookie("jwt", token, cookieOptions);
-    user.password = undefined;
+    const { password, ...safeUser } = user;
     res.status(statusCode).json({
       status: "success",
       token,
-      user,
+      user: safeUser,
     });
   }
 
@@ -69,7 +69,7 @@ export class AuthController {
     };
   };
 
-  getCurrentUser  = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  getCurrentUser = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
     const user = await this.authService.getme(req.user.id);
     res.status(200).json({
       status: "success",

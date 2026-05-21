@@ -39,12 +39,13 @@ export class UserService {
   
   // Partial: chỉ cần truyền một số trường cần cập nhật
   async updateUser(id: string, data: Partial<User>) {
-    const { name } = data;
+    const { name, photo } = data;
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new AppError("No user found with that ID", 404);
     }
     if (name) user.name = name;
+    if (photo !== undefined) user.photo = photo;
     await this.userRepository.save(user);
     return await this.findOne(id);
   }

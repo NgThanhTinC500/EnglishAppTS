@@ -45,6 +45,15 @@ export class VocabularyService {
         return vocabulary;
     }
 
+    private normalizeAnswer(value: string) {
+        return value
+            .trim()
+            .toLowerCase()
+            .replace(/[|\n\r]+/g, " ")
+            .replace(/[.,!?;:"'()]/g, "")
+            .replace(/\s+/g, " ");
+    }
+
     /*
         =========================
         VOCABULARY SET
@@ -66,9 +75,15 @@ export class VocabularyService {
     }
 
     async getAllVocabularySets(userId: string) {
-        return this.vocabularySetRepository.find({
-            where: { userId }
-        });
+        return this.vocabularySetRepository
+            .createQueryBuilder("vocabularySet")
+            .loadRelationCountAndMap(
+                "vocabularySet.vocabularyCount",
+                "vocabularySet.vocabularies"
+            )
+            .where("vocabularySet.userId = :userId", { userId })
+            .orderBy("vocabularySet.createdAt", "DESC")
+            .getMany();
     }
 
     async getVocabularySetById(userId: string, setId: number) {
@@ -112,6 +127,56 @@ export class VocabularyService {
             vocabularies: true,
         });
         return vocabularySet.vocabularies;
+    }
+
+    async getVocabularyPracticeItems(userId: string, setId: number) {
+        const vocabularySet = await this.findVocabularySetOrFail(userId, setId, {
+            vocabularies: true,
+        });
+
+        return vocabularySet.vocabularies.map((vocabulary) => ({
+            id: vocabulary.id,
+            prompt: vocabulary.meaning,
+            example: vocabulary.example,
+        }));
+    }
+
+    async checkVocabularyPracticeAnswer(
+        userId: string,
+        vocabularyId: number,
+        answerText: string
+    ) {
+        if (!answerText.trim()) {
+            throw new AppError("answerText is required", 400);
+        }
+
+        const vocabulary = await this.vocabularyRepository.findOne({
+            where: {
+                id: vocabularyId,
+                vocabularySet: {
+                    userId,
+                },
+            },
+            relations: {
+                vocabularySet: true,
+            },
+        });
+
+        if (!vocabulary) {
+            throw new AppError("Vocabulary không tồn tại", 404);
+        }
+
+        const isCorrect =
+            this.normalizeAnswer(answerText) === this.normalizeAnswer(vocabulary.word);
+
+        return {
+            vocabularyId: vocabulary.id,
+            answerText,
+            isCorrect,
+            correctAnswer: vocabulary.word,
+            meaning: vocabulary.meaning,
+            example: vocabulary.example,
+        };
     }
 
     async createVocabulary(

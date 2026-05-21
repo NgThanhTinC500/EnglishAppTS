@@ -32,6 +32,22 @@ export class UserController {
     res.status(200).json(updatedUser);
   }
 
+  static async updateMe(req: Request, res: Response) {
+    const payload = {
+      ...req.body,
+      ...(req.file
+        ? {
+            photo: `/uploads/img/${req.file.filename}`,
+          }
+        : {}),
+    };
+    const updatedUser = await userService.updateUser(req.user.id, payload);
+    res.status(200).json({
+      status: "success",
+      data: { user: updatedUser },
+    });
+  }
+
   static async delete(req: Request, res: Response) {
     const id = String(req.params.id);
     const result = await userService.deleteUser(id);

@@ -6,6 +6,7 @@ import { AppDataSource } from "./data-source";
 import userRouter from "./router/userRouter";
 // import examRouter from "./router/examRouter";
 import questionRouter from "./router/questionRouter";
+import attemptRouter from "./router/attemptRouter";
 
 import rateLimit from 'express-rate-limit';
 import globalErrorHandler from './controller/errorController';
@@ -44,7 +45,8 @@ AppDataSource.initialize()
       message: 'To many request from this IP, please try again'
     });
 
-    // Serve static files (e.g., images) from the "public" directory under the "/uploads" route
+    // Serve uploaded files from a stable project-level public directory.
+    app.use('/uploads', express.static(path.join(process.cwd(), 'public')));
     app.use('/uploads', express.static(path.join(__dirname, 'public')));
 
     app.use(cors(corsOptions));
@@ -62,6 +64,7 @@ AppDataSource.initialize()
     // app.use("/api/v1", examRouter);
     app.use("/api/v1", blogRouter);
     app.use("/api/v1", questionRouter);
+    app.use("/api/v1", attemptRouter);
     app.use("/api/v1", topicRouter);
     app.use("/api/v1", courseRouter);
     app.use("/api/v1", lessonRouter);

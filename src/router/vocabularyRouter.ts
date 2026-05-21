@@ -36,6 +36,14 @@ vocabularyRouter.get(
   vocabularyController.getVocabulariesBySetId
 );
 vocabularyRouter.get(
+  "/vocabulary/topics/:topicId/practice",
+  vocabularyController.getVocabularyPracticeItems
+);
+vocabularyRouter.post(
+  "/vocabulary/practice/check",
+  vocabularyController.checkVocabularyPracticeAnswer
+);
+vocabularyRouter.get(
   "/vocabsets/:setId/vocabs/:vocabularyId",
   vocabularyController.getVocabularyDetail
 );

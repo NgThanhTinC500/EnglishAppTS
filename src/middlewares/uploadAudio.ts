@@ -1,78 +1,77 @@
-import multer from 'multer';
-import * as path from "path";
+import multer from "multer";
 import * as fs from "fs";
-import { Request } from "express";
+import * as path from "path";
+import { NextFunction, Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 
-// __dirname là thư mục hiện tại: src/middlewares
-const uploadDir = path.resolve(__dirname, "../public/audio");
-if (!fs.existsSync(uploadDir)) { // existsSync => kiểm tra thư mục tồn tại
-    fs.mkdirSync(uploadDir, { recursive: true }); // mkdirSync => tạo thư mục tự động
+//similar to uploadImage.ts, but for audio files
+const uploadDir = path.resolve(process.cwd(), "public/audio");
+
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Cấu hình storage
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir); // không lỗi, lưu file vào uploadDir
+    destination: (_req, _file, cb) => {
+        cb(null, uploadDir);
     },
-    filename: (req, file, cb) => {
-        // Tạo tên file unique: uuid-timestamp.mp3
+    filename: (_req, file, cb) => {
         const uniqueName = `${uuidv4()}-${Date.now()}${path.extname(file.originalname)}`;
-        cb(null, uniqueName); // khong lỗi, tạo ra tên 
+        cb(null, uniqueName);
     }
 });
 
-// File filter - chỉ cho phép audio files
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    // Các định dạng audio cho phép
     const allowedMimes = [
-        'audio/mpeg',      // .mp3
-        'audio/mp3',       // .mp3
-        'audio/wav',       // .wav
-        'audio/x-wav',     // .wav
-        'audio/ogg',       // .ogg
-        'audio/mp4',       // .m4a
-        'audio/x-m4a',     // .m4a
+        "audio/mpeg",
+        "audio/mp3",
+        "audio/wav",
+        "audio/x-wav",
+        "audio/ogg",
+        "audio/mp4",
+        "audio/x-m4a",
     ];
 
-    // kiểm tra xem đúng định dạng ko
     if (allowedMimes.includes(file.mimetype)) {
         cb(null, true);
-    } else {
-        cb(new Error(`Invalid file type. Only audio files are allowed. Received: ${file.mimetype}`));
+        return;
     }
+
+    cb(new Error(`Invalid file type. Only audio files are allowed. Received: ${file.mimetype}`));
 };
 
-// Cấu hình multer
 export const uploadAudio = multer({
-    storage: storage,
-    fileFilter: fileFilter,
+    storage,
+    fileFilter,
     limits: {
-        fileSize: 10 * 1024 * 1024 // Giới hạn 10MB
+        fileSize: 10 * 1024 * 1024
     }
 });
 
-export const uploadAudioSingle = uploadAudio.single('audio'); 
-// key trong data-form la audio
+export const uploadAudioSingle = uploadAudio.single("audio");
 
-// Middleware xử lý lỗi upload
-// export const handleUploadError = (err: any, req: any, res: any, next: any) => {
-//     if (err instanceof multer.MulterError) {
-//         if (err.code === 'LIMIT_FILE_SIZE') {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: 'File too large. Maximum size is 10MB'
-//             });
-//         }
-//         return res.status(400).json({
-//             success: false,
-//             message: `Upload error: ${err.message}`
-//         });
-//     } else if (err) {
-//         return res.status(400).json({
-//             success: false,
-//             message: err.message
-//         });
-//     }
-//     next();
-// };
+export const handleUploadAudioError = (err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+            return res.status(400).json({
+                success: false,
+                message: "Audio too large. Maximum size is 10MB"
+            });
+        }
+
+        return res.status(400).json({
+            success: false,
+            message: `Upload error: ${err.message}`
+        });
+    }
+
+    if (err) {
+        const message = err instanceof Error ? err.message : "Unknown upload error";
+        return res.status(400).json({
+            success: false,
+            message
+        });
+    }
+
+    next();
+};

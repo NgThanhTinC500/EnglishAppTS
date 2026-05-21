@@ -26,7 +26,7 @@ export class User {
     @Column()
     email: string;
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, default: "/uploads/image/avatar.webp" })
     photo: string;
 
     @Column({ select: false })

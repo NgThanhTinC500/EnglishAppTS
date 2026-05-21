@@ -53,9 +53,6 @@ export class AttemptAnswer {
   @Column({ type: 'text', nullable: true })
   answerText: string | null;
 
-  @Column({ type: 'text', nullable: true })
-  correctAnswerText: string | null;
-
   @CreateDateColumn()
   createdAt: Date;
 

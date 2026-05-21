@@ -1,83 +1,104 @@
 import { Repository } from "typeorm";
-import { Topic } from "../entity/Topic";
 import { AppDataSource } from "../data-source";
+import { Topic, TopicType } from "../entity/Topic";
 import { AppError } from "../utils/appError";
-import { TopicType } from "../entity/Topic"; // đường dẫn tới entity Topic
+
 export class TopicService {
-    private topicRepository: Repository<Topic>
+    private topicRepository: Repository<Topic>;
+
     constructor() {
-        this.topicRepository = AppDataSource.getRepository(Topic)
+        this.topicRepository = AppDataSource.getRepository(Topic);
+    }
+
+    private ensurePositiveInteger(value: number, fieldName: string) {
+        if (!Number.isInteger(value) || value <= 0) {
+            throw new AppError(`${fieldName} must be a positive integer`, 400);
+        }
+    }
+
+    private validateTopicType(type?: TopicType) {
+        if (type !== undefined && !Object.values(TopicType).includes(type)) {
+            throw new AppError("Invalid topic type", 400);
+        }
     }
 
     async createTopic(topicData: Partial<Topic>) {
         if (!topicData.title?.trim()) {
-            throw new AppError("Title phải có", 400);
+            throw new AppError("Title is required", 400);
         }
+
         const { title, description, type } = topicData;
+        this.validateTopicType(type);
+
         const topic = this.topicRepository.create({
-            title,
+            title: title.trim(),
             description,
-            type
+            type: type ?? TopicType.GRAMMAR
         });
+
         return this.topicRepository.save(topic);
     }
 
     async updateTopic(topicId: number, topicData: Partial<Topic>) {
+        this.ensurePositiveInteger(topicId, "topicId");
+
         const topic = await this.topicRepository.findOne({
             where: { id: topicId }
         });
+        if (!topic) throw new AppError("Topic not found", 404);
 
-        if (!topic) {
-            throw new AppError("Topic không tồn tại", 404);
-        }
         const { title, description, type } = topicData;
-        if (title !== undefined) topic.title = title;
+        this.validateTopicType(type);
+
+        if (title !== undefined) {
+            if (!title.trim()) throw new AppError("Title is required", 400);
+            topic.title = title.trim();
+        }
         if (description !== undefined) topic.description = description;
         if (type !== undefined) topic.type = type;
 
-        return await this.topicRepository.save(topic);
+        return this.topicRepository.save(topic);
     }
 
     async deleteTopic(topicId: number) {
+        this.ensurePositiveInteger(topicId, "topicId");
+
         const topic = await this.topicRepository.findOne({
             where: { id: topicId }
         });
+        if (!topic) throw new AppError("Topic not found", 404);
 
-        if (!topic) {
-            throw new AppError("Topic không tồn tại", 404);
-        }
-
-           await this.topicRepository.delete(topicId);
+        await this.topicRepository.delete(topicId);
     }
 
-    // Get all topics with total questions count, filter by type if provided
+    // Get all topics with total questions count, filter by type if provided.
     async getAllTopic(type?: TopicType) {
-        const topics = await this.topicRepository.query(`
-        SELECT
-            t.id,
-            t.title,
-            t.description,
-            t.type,
-            t."createdAt",
-            t."updatedAt",
-            COUNT(eq.id)::int AS "totalQuestions"
-        FROM topics t
-        LEFT JOIN exams e
-            ON e."topicId" = t.id
-            AND e."isActive" = true
-        LEFT JOIN exam_questions eq
-            ON eq."examId" = e.id   
-        WHERE ($1::text IS NULL OR t.type = $1::topics_type_enum)
-        GROUP BY
-            t.id,
-            t.title,
-            t.description,
-            t.type,
-            t."createdAt",
-            t."updatedAt"
-        ORDER BY t."createdAt" DESC
-    `, [type ?? null]);
+        this.validateTopicType(type);
 
-        return topics;
+        return this.topicRepository.query(`
+            SELECT
+                t.id,
+                t.title,
+                t.description,
+                t.type,
+                t."createdAt",
+                t."updatedAt",
+                COUNT(eq.id)::int AS "totalQuestions"
+            FROM topics t
+            LEFT JOIN exams e
+                ON e."topicId" = t.id
+                AND e."isActive" = true
+            LEFT JOIN exam_questions eq
+                ON eq."examId" = e.id
+            WHERE ($1::text IS NULL OR t.type = $1::topics_type_enum)
+            GROUP BY
+                t.id,
+                t.title,
+                t.description,
+                t.type,
+                t."createdAt",
+                t."updatedAt"
+            ORDER BY t."createdAt" DESC
+        `, [type ?? null]);
     }
 }

@@ -1,22 +1,27 @@
 import { AppDataSource } from "../data-source";
 import { Exam } from "../entity/Exam";
 import { Question } from "../entity/Question";
-import { QuestionOption } from "../entity/QuestionOption";
-import * as fs from 'fs';
-import * as path from 'path';
 import { Topic } from "../entity/Topic";
 import { AppError } from "../utils/appError";
 
 export class ExamService {
     private examRepository = AppDataSource.getRepository(Exam);
-    private questionRepository = AppDataSource.getRepository(Question);
-    private answerRepository = AppDataSource.getRepository(QuestionOption);
-    private topicRepository = AppDataSource.getRepository(Topic)
+    private topicRepository = AppDataSource.getRepository(Topic);
+
+    private ensurePositiveInteger(value: number, fieldName: string) {
+        if (!Number.isInteger(value) || value <= 0) {
+            throw new AppError(`${fieldName} must be a positive integer`, 400);
+        }
+    }
+
+    private escapeRegExp(value: string) {
+        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
 
     private splitDictationAnswers(value: string | null | undefined) {
         return (value ?? "")
             .split(",")
-            .map(answer => answer.trim())
+            .map((answer) => answer.trim())
             .filter(Boolean);
     }
 
@@ -26,13 +31,17 @@ export class ExamService {
 
         return correctAnswers.reduce((maskedTranscript, answer) => {
             if (!answer) return maskedTranscript;
-            const escapedAnswer = answer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            return maskedTranscript.replace(new RegExp(`\\b${escapedAnswer}\\b`, "i"), "[BLANK]");
+
+            const escapedAnswer = this.escapeRegExp(answer);
+            const pattern = new RegExp(`(^|[\\s.,!?;:"'()])(${escapedAnswer})(?=$|[\\s.,!?;:"'()])`, "i");
+
+            return maskedTranscript.replace(pattern, (_match, prefix) => `${prefix}[BLANK]`);
         }, transcript);
     }
 
     private toSafeQuestion(question: Question) {
         const correctAnswers = this.splitDictationAnswers(question.dictationAnswer);
+
         return {
             id: question.id,
             category: question.category,
@@ -47,7 +56,7 @@ export class ExamService {
                 : this.maskTranscript(question.transcript, correctAnswers),
             showTranscript: question.showTranscript,
             dictationAnswer: question.dictationAnswer,
-            options: question.options?.map(option => ({
+            options: question.options?.map((option) => ({
                 id: option.id,
                 questionId: option.questionId,
                 label: option.label,
@@ -59,15 +68,19 @@ export class ExamService {
         };
     }
 
-    // Partial
-    // tham số examData chứa một phần field của entity Exam
     async createExam(topicId: number, examData: Pick<Exam, "title" | "duration">) {
+        this.ensurePositiveInteger(topicId, "topicId");
+
+        const title = String(examData.title ?? "").trim();
+        if (!title) throw new AppError("Exam title is required", 400);
+
+        const duration = Number(examData.duration);
+        this.ensurePositiveInteger(duration, "duration");
+
         const topic = await this.topicRepository.findOne({
             where: { id: topicId }
         });
-        if (!topic)
-            throw new AppError("Topic not found", 404);
-        const { title, duration } = examData;
+        if (!topic) throw new AppError("Topic not found", 404);
 
         const exam = this.examRepository.create({
             title,
@@ -79,15 +92,18 @@ export class ExamService {
     }
 
     async getAllExams(topicId: number) {
-        return await this.examRepository.find({
-            where: { topicId: topicId, isActive: true },
+        this.ensurePositiveInteger(topicId, "topicId");
+
+        return this.examRepository.find({
+            where: { topicId, isActive: true },
             order: { id: "ASC" }
-            // relations: ["questions", "questions.answers"],
         });
     }
 
-    // Service
     async getExamDetail(topicId: number, examId: number) {
+        this.ensurePositiveInteger(topicId, "topicId");
+        this.ensurePositiveInteger(examId, "examId");
+
         const exam = await this.examRepository.findOne({
             where: { topicId, id: examId },
             relations: {
@@ -106,24 +122,27 @@ export class ExamService {
         return {
             ...examInfo,
             questions: examQuestions
-                .sort((a, b) => a.orderIndex - b.orderIndex)
-                .map(eq => ({
-                    orderIndex: eq.orderIndex,
-                    ...this.toSafeQuestion(eq.question)
+                .filter((examQuestion) => examQuestion.question)
+                .sort((first, second) => first.orderIndex - second.orderIndex)
+                .map((examQuestion) => ({
+                    orderIndex: examQuestion.orderIndex,
+                    ...this.toSafeQuestion(examQuestion.question)
                 }))
         };
     }
 
     async toggleExamActive(topicId: number, examId: number) {
+        this.ensurePositiveInteger(topicId, "topicId");
+        this.ensurePositiveInteger(examId, "examId");
+
         const exam = await this.examRepository.findOne({
             where: { topicId, id: examId }
         });
-        if (!exam) {
-            throw new AppError("Exam not found", 404);
-        }
+        if (!exam) throw new AppError("Exam not found", 404);
+
         exam.isActive = !exam.isActive;
 
-        return await this.examRepository.save(exam);
+        return this.examRepository.save(exam);
     }
 
     async updateExam(
@@ -131,13 +150,14 @@ export class ExamService {
         examId: number,
         updateData: Partial<Exam>
     ) {
+        this.ensurePositiveInteger(topicId, "topicId");
+        this.ensurePositiveInteger(examId, "examId");
+
         const exam = await this.examRepository.findOne({
             where: { topicId, id: examId }
         });
 
-        if (!exam) {
-            throw new AppError("Exam not found", 404);
-        }
+        if (!exam) throw new AppError("Exam not found", 404);
 
         const allowedFields: (keyof Exam)[] = [
             "title",
@@ -151,105 +171,22 @@ export class ExamService {
                     allowedFields.includes(key as keyof Exam) &&
                     value !== undefined
             )
-        );
+        ) as Partial<Exam>;
+
+        if ("title" in filteredData) {
+            const title = String(filteredData.title ?? "").trim();
+            if (!title) throw new AppError("Exam title is required", 400);
+            filteredData.title = title;
+        }
+
+        if ("duration" in filteredData) {
+            const duration = Number(filteredData.duration);
+            this.ensurePositiveInteger(duration, "duration");
+            filteredData.duration = duration;
+        }
 
         Object.assign(exam, filteredData);
 
         return this.examRepository.save(exam);
     }
-
-
-    async updateQuestion(questionId: number, updateData: Partial<Question>) {
-        const question = await this.questionRepository.findOne({
-            where: { id: questionId }
-        })
-
-        if (!question) {
-            return null;
-        }
-        // copy từ updateData vào question
-        Object.assign(question, updateData);
-        return await this.questionRepository.save(question)
-    }
-    
-    async deleteQuestion(questionId: number): Promise<boolean> {
-        const result = await this.questionRepository.delete(questionId);
-        // tra ve true neu co it nhat 1 dong dc update
-        return result.affected > 0;
-    }
-    
-    async getExamWithQuestions(examId: number): Promise<Exam | null> {
-        return await this.examRepository.findOne({
-            where: { id: examId },
-            relations: ["questions", "questions.answers"],
-            // order: {
-            //     questions: {
-            //         orderNumber: "ASC"
-            //     }
-            // }
-        });
-    }
-
-    // Xóa câu hỏi (bao gồm xóa file audio nếu có)
-    async deleteQuestionWithAudio(questionId: number): Promise<boolean> {
-        const question = await this.questionRepository.findOne({
-            where: { id: questionId }
-        });
-
-        if (!question) {
-            return false;
-        }
-
-        // Xóa file audio nếu có
-        if (question.audioUrl) {
-            try {
-                const filePath = path.join(".", question.audioUrl);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                    console.log(`Deleted audio file: ${filePath}`);
-                }
-            } catch (error) {
-                console.error(`Failed to delete audio file: ${error}`);
-            }
-        }
-
-        const result = await this.questionRepository.delete(questionId);
-        return result.affected > 0;
-    }
-    async updateQuestionAudio(
-        questionId: number,
-        audioUrl: string,
-        audioFileName: string,
-        audioDuration?: number
-    ): Promise<Question | null> {
-        const question = await this.questionRepository.findOne({
-            where: { id: questionId }
-        });
-
-        if (!question) {
-            return null;
-        }
-
-        // Xóa audio cũ nếu có
-        if (question.audioUrl && question.audioUrl !== audioUrl) {
-            try {
-                const oldFilePath = path.join(".", question.audioUrl);
-                if (fs.existsSync(oldFilePath)) {
-                    fs.unlinkSync(oldFilePath);
-                }
-            } catch (error) {
-                console.error(`Failed to delete old audio: ${error}`);
-            }
-        }
-
-        // Cập nhật audio mới
-        question.audioUrl = audioUrl;
-        question.audioFileName = audioFileName;
-        question.audioDuration = audioDuration;
-
-        return await this.questionRepository.save(question);
-    }
-
-
-
 }

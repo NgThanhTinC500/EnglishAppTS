@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { UserController } from "../controller/userController";
 import { AuthController } from "../controller/authController";
+import { handleUploadImageError, uploadImageSingle } from "../middlewares/uploadImage";
 
 const userRouter = Router();
 
@@ -10,6 +11,7 @@ const authController = new AuthController();
 userRouter.post("/user", UserController.create);
 userRouter.get("/user/:id", UserController.findOne);
 userRouter.put("/user/:id", UserController.update);
+userRouter.patch("/users/me", authController.protect, uploadImageSingle, handleUploadImageError, UserController.updateMe);
 
 
 userRouter.get("/users", authController.protect, authController.restrictTo("admin"), UserController.all);

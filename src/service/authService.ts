@@ -1,4 +1,5 @@
 import * as jwt from "jsonwebtoken";
+import type { SignOptions } from "jsonwebtoken";
 import { MoreThan } from "typeorm";
 import { User } from "../entity/User";
 import { UserService } from "./userService";
@@ -15,7 +16,7 @@ export class AuthService {
 
     signToken(userId: string): string {
         const jwtSecret = process.env.JWT_SECRET;
-        const jwtExpiresIn = process.env.JWT_EXPIRES_IN ?? "7d"; // fallback nếu undefined
+        const jwtExpiresIn = (process.env.JWT_EXPIRES_IN ?? "7d") as SignOptions["expiresIn"];
 
         if (!jwtSecret) {
             throw new AppError("JWT secret is not configured", 500);

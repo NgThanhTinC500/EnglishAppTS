@@ -6,6 +6,7 @@ import {
 } from 'typeorm';
 import { Lecture } from './Lectures';
 import { User } from './User';
+import { CommentLike } from './CommentLike';
 
 @Entity('comments')
 
@@ -39,6 +40,9 @@ export class Comment {
 
     @OneToMany(() => Comment, comment => comment.parentComment)
     replies: Comment[];
+
+    @OneToMany(() => CommentLike, like => like.comment)
+    likes: CommentLike[];
 
     @CreateDateColumn()
     createdAt: Date;
