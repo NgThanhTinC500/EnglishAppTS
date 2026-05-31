@@ -20,13 +20,21 @@ import courseRouter from "./router/courseRouter";
 import lessonRouter from "./router/LessonRouter";
 import lectureRouter from "./router/LectureRouter";
 import commentRouter from './router/commenRouter';
+import toeicCollectionRouter from "./router/toeicCollectionRouter";
+import toeicExamSetRouter from "./router/toeicExamSetRouter";
+import toeicExamPartRouter from "./router/toeicExamPartRouter";
+import toeicQuestionGroupRouter from "./router/toeicQuestionGroupRouter";
+import toeicQuestionRouter from "./router/toeicQuestionRouter";
+import toeicQuestionOptionRouter from "./router/toeicQuestionOptionRouter";
+import toeicExamSessionRouter from "./router/toeicExamSessionRouter";
+import { getCorsOrigin } from "./utils/httpConfig";
 dotenv.config();
 import { createServer } from "http";
 import { initSocket } from "./socket/index";
 
 console.log('NODE_ENV =', process.env.NODE_ENV);
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: getCorsOrigin(),
   credentials: true,
 };
 
@@ -70,6 +78,13 @@ AppDataSource.initialize()
     app.use("/api/v1", lessonRouter);
     app.use("/api/v1", lectureRouter);
     app.use("/api/v1", commentRouter);
+    app.use("/api/v1/toeic-collections", toeicCollectionRouter);
+    app.use("/api/v1", toeicExamSetRouter);
+    app.use("/api/v1", toeicExamPartRouter);
+    app.use("/api/v1", toeicQuestionGroupRouter);
+    app.use("/api/v1", toeicQuestionRouter);
+    app.use("/api/v1", toeicQuestionOptionRouter);
+    app.use("/api/v1", toeicExamSessionRouter);
 
     app.use(globalErrorHandler);
 

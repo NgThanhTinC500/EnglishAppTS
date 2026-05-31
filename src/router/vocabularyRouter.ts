@@ -11,6 +11,7 @@ vocabularyRouter.use(authController.protect);
 // Vocabulary sets
 vocabularyRouter.post(
   "/vocabsets",
+  authController.restrictTo("admin"),
   vocabularyController.createVocabularySet
 );
 vocabularyRouter.get(
@@ -23,10 +24,12 @@ vocabularyRouter.get(
 );
 vocabularyRouter.patch(
   "/vocabsets/:setId",
+  authController.restrictTo("admin"),
   vocabularyController.updateVocabularySet
 );
 vocabularyRouter.delete(
   "/vocabsets/:setId",
+  authController.restrictTo("admin"),
   vocabularyController.deleteVocabularySet
 );
 
@@ -35,6 +38,29 @@ vocabularyRouter.get(
   "/vocabsets/:setId/vocabs",
   vocabularyController.getVocabulariesBySetId
 );
+
+vocabularyRouter.get(
+  "/vocabsets/:setId/vocabs/:vocabularyId",
+  vocabularyController.getVocabularyDetail
+);
+vocabularyRouter.post(
+  "/vocabsets/:setId/vocabs",
+  authController.restrictTo("admin"),
+  vocabularyController.createVocabulary
+);
+vocabularyRouter.patch(
+  "/vocabsets/:setId/vocabs/:vocabularyId",
+  authController.restrictTo("admin"),
+  vocabularyController.updateVocabulary
+);
+vocabularyRouter.delete(
+  "/vocabsets/:setId/vocabs/:vocabularyId",
+  authController.restrictTo("admin"),
+  vocabularyController.deleteVocabulary
+);
+
+// Vocabulary practice
+// get vocabulary practice items by topic id
 vocabularyRouter.get(
   "/vocabulary/topics/:topicId/practice",
   vocabularyController.getVocabularyPracticeItems
@@ -42,22 +68,6 @@ vocabularyRouter.get(
 vocabularyRouter.post(
   "/vocabulary/practice/check",
   vocabularyController.checkVocabularyPracticeAnswer
-);
-vocabularyRouter.get(
-  "/vocabsets/:setId/vocabs/:vocabularyId",
-  vocabularyController.getVocabularyDetail
-);
-vocabularyRouter.post(
-  "/vocabsets/:setId/vocabs",
-  vocabularyController.createVocabulary
-);
-vocabularyRouter.patch(
-  "/vocabsets/:setId/vocabs/:vocabularyId",
-  vocabularyController.updateVocabulary
-);
-vocabularyRouter.delete(
-  "/vocabsets/:setId/vocabs/:vocabularyId",
-  vocabularyController.deleteVocabulary
 );
 
 export default vocabularyRouter;

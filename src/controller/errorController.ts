@@ -40,9 +40,10 @@ const globalErrorHandler = (
 
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);
-  } else if (process.env.NODE_ENV === 'production') {
-    sendErrorProd(err, res);
+    return;
   }
+
+  sendErrorProd(err, res);
 };
 
 export default globalErrorHandler;

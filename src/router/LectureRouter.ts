@@ -1,10 +1,9 @@
 import { Router } from "express";
 import { LectureController } from "../controller/lectureController";
-import { AuthController } from "../controller/authController";
+
 
 const LectureRoutes = Router();
 const lectureController = new LectureController();
-const authController = new AuthController();
 
 
 

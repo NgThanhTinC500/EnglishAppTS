@@ -6,7 +6,7 @@ export class QuestionController {
     private questionService = new QuestionService();
 
     private normalizeQuestionPayload(req: Request) {
-        const payload: Record<string, any> = { ...req.body };
+        const payload: Record<string, unknown> = { ...req.body };
 
         if (typeof payload.options === "string") {
             payload.options = JSON.parse(payload.options);

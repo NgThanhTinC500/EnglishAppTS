@@ -55,11 +55,7 @@ export class VocabularyController {
 
     getAllVocabularySets = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
-
-            const result = await this.vocabularyService.getAllVocabularySets(
-                userId
-            );
+            const result = await this.vocabularyService.getAllVocabularySets();
 
             res.status(200).json({
                 success: true,
@@ -72,11 +68,9 @@ export class VocabularyController {
 
     getVocabularySetDetail = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const setId = this.parseId(req.params.setId, "setId");
 
             const result = await this.vocabularyService.getVocabularySetById(
-                userId,
                 setId
             );
 
@@ -90,11 +84,9 @@ export class VocabularyController {
 
     updateVocabularySet = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const setId = this.parseId(req.params.setId, "setId");
 
             const result = await this.vocabularyService.updateVocabularySet(
-                userId,
                 setId,
                 req.body
             );
@@ -109,10 +101,9 @@ export class VocabularyController {
 
     deleteVocabularySet = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const setId = this.parseId(req.params.setId, "setId");
 
-            await this.vocabularyService.deleteVocabularySet(userId, setId);
+            await this.vocabularyService.deleteVocabularySet(setId);
 
             res.status(200).json({
                 success: true,
@@ -130,11 +121,9 @@ export class VocabularyController {
 
     getVocabularyPracticeItems = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const setId = this.parseId(req.params.topicId, "topicId");
 
             const result = await this.vocabularyService.getVocabularyPracticeItems(
-                userId,
                 setId
             );
 
@@ -149,7 +138,6 @@ export class VocabularyController {
 
     checkVocabularyPracticeAnswer = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const vocabularyId = this.parseId(
                 String(req.body?.vocabularyId),
                 "vocabularyId"
@@ -158,7 +146,6 @@ export class VocabularyController {
 
             const result =
                 await this.vocabularyService.checkVocabularyPracticeAnswer(
-                    userId,
                     vocabularyId,
                     answerText
                 );
@@ -173,11 +160,9 @@ export class VocabularyController {
 
     createVocabulary = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const setId = this.parseId(req.params.setId, "setId");
 
             const result = await this.vocabularyService.createVocabulary(
-                userId,
                 setId,
                 req.body
             );
@@ -192,11 +177,9 @@ export class VocabularyController {
 
     getVocabulariesBySetId = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const setId = this.parseId(req.params.setId, "setId");
 
             const result = await this.vocabularyService.getVocabulariesBySetId(
-                userId,
                 setId
             );
 
@@ -211,7 +194,6 @@ export class VocabularyController {
 
     getVocabularyDetail = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const setId = this.parseId(req.params.setId, "setId");
 
             const vocabularyId = this.parseId(
@@ -220,7 +202,6 @@ export class VocabularyController {
             );
 
             const result = await this.vocabularyService.getVocabularyDetail(
-                userId,
                 setId,
                 vocabularyId
             );
@@ -235,7 +216,6 @@ export class VocabularyController {
 
     updateVocabulary = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const setId = this.parseId(req.params.setId, "setId");
             const vocabularyId = this.parseId(
                 req.params.vocabularyId,
@@ -243,7 +223,6 @@ export class VocabularyController {
             );
 
             const result = await this.vocabularyService.updateVocabulary(
-                userId,
                 setId,
                 vocabularyId,
                 req.body
@@ -259,7 +238,6 @@ export class VocabularyController {
 
     deleteVocabulary = catchAsync(
         async (req: Request, res: Response) => {
-            const userId = String(req.user?.id);
             const setId = this.parseId(req.params.setId, "setId");
             const vocabularyId = this.parseId(
                 req.params.vocabularyId,
@@ -267,7 +245,6 @@ export class VocabularyController {
             );
 
             await this.vocabularyService.deleteVocabulary(
-                userId,
                 setId,
                 vocabularyId
             );

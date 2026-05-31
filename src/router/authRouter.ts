@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { AuthController } from "../controller/authController";
-import { loginSchema, signupSchema } from "../schemas/auth.schema";
+import {
+    forgotPasswordSchema,
+    loginSchema,
+    resetPasswordSchema,
+    signupSchema,
+    updatePasswordSchema,
+} from "../schemas/auth.schema";
 import { validateRequest } from "../middlewares/validateRequest";
 
 const authRouter = Router();
@@ -8,14 +14,15 @@ const authRouter = Router();
 const authController = new AuthController();
 authRouter.post("/signup", validateRequest(signupSchema), authController.signup);
 authRouter.post("/login", validateRequest(loginSchema), authController.login);
-authRouter.post("/forgot-password", authController.forgotPassword);
-authRouter.post("/reset-password/:token", authController.resetPassword);
+authRouter.post("/forgot-password", validateRequest(forgotPasswordSchema), authController.forgotPassword);
+authRouter.patch("/reset-password/:token", validateRequest(resetPasswordSchema), authController.resetPassword);
+authRouter.post("/reset-password/:token", validateRequest(resetPasswordSchema), authController.resetPassword);
 
 // authController.restrictTo("admin", "user");
 
 // authRouter.use(authController.protect);
-authRouter.post("/logout", authController.protect, authController.logout);
+authRouter.post("/logout", authController.logout);
 authRouter.get("/me",authController.protect, authController.getCurrentUser);
-authRouter.patch("/updateMyPassword", authController.protect, authController.updatePassword);
+authRouter.patch("/updateMyPassword", authController.protect, validateRequest(updatePasswordSchema), authController.updatePassword);
 
 export default authRouter;

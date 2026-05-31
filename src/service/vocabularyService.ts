@@ -2,18 +2,23 @@ import { AppDataSource } from "../data-source";
 import { VocabularySet } from "../entity/VocabularySet";
 import { Vocabulary } from "../entity/Vocabulary";
 import { AppError } from "../utils/appError";
+import { UserRole } from "../entity/User";
 export class VocabularyService {
     private vocabularySetRepository = AppDataSource.getRepository(VocabularySet);
 
     private vocabularyRepository = AppDataSource.getRepository(Vocabulary);
 
     private async findVocabularySetOrFail(
-        userId: string,
         setId: number,
         relations?: { vocabularies?: boolean }
     ) {
         const vocabularySet = await this.vocabularySetRepository.findOne({
-            where: { id: setId, userId },
+            where: {
+                id: setId,
+                user: {
+                    role: UserRole.ADMIN,
+                },
+            },
             relations,
         });
 
@@ -24,12 +29,8 @@ export class VocabularyService {
         return vocabularySet;
     }
 
-    private async findVocabularyOrFail(
-        userId: string,
-        setId: number,
-        vocabularyId: number
-    ) {
-        await this.findVocabularySetOrFail(userId, setId);
+    private async findVocabularyOrFail(setId: number, vocabularyId: number) {
+        await this.findVocabularySetOrFail(setId);
 
         const vocabulary = await this.vocabularyRepository.findOne({
             where: {
@@ -74,30 +75,31 @@ export class VocabularyService {
         return this.vocabularySetRepository.save(vocabularySet);
     }
 
-    async getAllVocabularySets(userId: string) {
+    async getAllVocabularySets() {
         return this.vocabularySetRepository
             .createQueryBuilder("vocabularySet")
             .loadRelationCountAndMap(
                 "vocabularySet.vocabularyCount",
                 "vocabularySet.vocabularies"
             )
-            .where("vocabularySet.userId = :userId", { userId })
+            .innerJoin("vocabularySet.user", "owner", "owner.role = :role", {
+                role: UserRole.ADMIN,
+            })
             .orderBy("vocabularySet.createdAt", "DESC")
             .getMany();
     }
 
-    async getVocabularySetById(userId: string, setId: number) {
-        return this.findVocabularySetOrFail(userId, setId, {
+    async getVocabularySetById(setId: number) {
+        return this.findVocabularySetOrFail(setId, {
             vocabularies: true,
         });
     }
 
     async updateVocabularySet(
-        userId: string,
         setId: number,
         data: Partial<VocabularySet>
     ) {
-        const vocabularySet = await this.findVocabularySetOrFail(userId, setId);
+        const vocabularySet = await this.findVocabularySetOrFail(setId);
 
         if (data.name !== undefined && !data.name.trim()) {
             throw new AppError("Set name cannot be empty", 400);
@@ -111,8 +113,8 @@ export class VocabularyService {
         return this.vocabularySetRepository.save(vocabularySet);
     }
 
-    async deleteVocabularySet(userId: string, setId: number) {
-        const vocabularySet = await this.findVocabularySetOrFail(userId, setId);
+    async deleteVocabularySet(setId: number) {
+        const vocabularySet = await this.findVocabularySetOrFail(setId);
         await this.vocabularySetRepository.remove(vocabularySet);
     }
 
@@ -122,15 +124,15 @@ export class VocabularyService {
         =========================
     */
 
-    async getVocabulariesBySetId(userId: string, setId: number) {
-        const vocabularySet = await this.findVocabularySetOrFail(userId, setId, {
+    async getVocabulariesBySetId(setId: number) {
+        const vocabularySet = await this.findVocabularySetOrFail(setId, {
             vocabularies: true,
         });
         return vocabularySet.vocabularies;
     }
 
-    async getVocabularyPracticeItems(userId: string, setId: number) {
-        const vocabularySet = await this.findVocabularySetOrFail(userId, setId, {
+    async getVocabularyPracticeItems(setId: number) {
+        const vocabularySet = await this.findVocabularySetOrFail(setId, {
             vocabularies: true,
         });
 
@@ -142,7 +144,6 @@ export class VocabularyService {
     }
 
     async checkVocabularyPracticeAnswer(
-        userId: string,
         vocabularyId: number,
         answerText: string
     ) {
@@ -154,11 +155,15 @@ export class VocabularyService {
             where: {
                 id: vocabularyId,
                 vocabularySet: {
-                    userId,
+                    user: {
+                        role: UserRole.ADMIN,
+                    },
                 },
             },
             relations: {
-                vocabularySet: true,
+                vocabularySet: {
+                    user: true,
+                },
             },
         });
 
@@ -180,11 +185,10 @@ export class VocabularyService {
     }
 
     async createVocabulary(
-        userId: string,
         setId: number,
         data: Partial<Vocabulary>
     ) {
-        await this.findVocabularySetOrFail(userId, setId);
+        await this.findVocabularySetOrFail(setId);
 
         if (!data.word?.trim()) {
             throw new AppError("Word is required", 400);
@@ -206,24 +210,18 @@ export class VocabularyService {
     }
 
     async getVocabularyDetail(
-        userId: string,
         setId: number,
         vocabularyId: number
     ) {
-        return this.findVocabularyOrFail(userId, setId, vocabularyId);
+        return this.findVocabularyOrFail(setId, vocabularyId);
     }
 
     async updateVocabulary(
-        userId: string,
         setId: number,
         vocabularyId: number,
         data: Partial<Vocabulary>
     ) {
-        const vocabulary = await this.findVocabularyOrFail(
-            userId,
-            setId,
-            vocabularyId
-        );
+        const vocabulary = await this.findVocabularyOrFail(setId, vocabularyId);
 
         if (data.word !== undefined && !data.word.trim()) {
             throw new AppError("Word cannot be empty", 400);
@@ -247,15 +245,10 @@ export class VocabularyService {
     }
 
     async deleteVocabulary(
-        userId: string,
         setId: number,
         vocabularyId: number
     ) {
-        const vocabulary = await this.findVocabularyOrFail(
-            userId,
-            setId,
-            vocabularyId
-        );
+        const vocabulary = await this.findVocabularyOrFail(setId, vocabularyId);
         await this.vocabularyRepository.remove(vocabulary);
     }
 }

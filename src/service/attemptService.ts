@@ -474,67 +474,6 @@ export class AttemptService {
         };
     }
 
-    private async answerDictationLegacy(
-        attemptId: number,
-        userId: string,
-        questionId: number,
-        answerText: string,
-        answers?: string[]
-    ) {
-        this.ensurePositiveInteger(attemptId, "attemptId");
-        this.ensurePositiveInteger(questionId, "questionId");
-
-        const attempt = await this.attemptRepository.findOne({
-            where: { id: attemptId, userId }
-        });
-
-        if (!attempt) {
-            throw new AppError("Không tồn tại lần thi này", 404);
-        }
-        if (attempt.status !== AttemptStatus.IN_PROGRESS) {
-            throw new AppError("Bài thi không còn ở trạng thái làm bài", 400);
-        }
-        await this.ensureQuestionBelongsToAttemptExam(attempt, questionId);
-
-        const question = await this.questionRepository.findOne({
-            where: { id: questionId }
-        });
-        if (!question || question.type !== QuestionType.DICTATION) {
-            throw new AppError("Không tồn tại câu hỏi nghe chép chính xác này", 404);
-        }
-        if (!question.dictationAnswer) {
-            throw new AppError("Câu hỏi này chưa có đáp án đúng", 400);
-        }
-        if (!answerText.trim()) {
-            throw new AppError("answerText is required", 400);
-        }
-
-        const correctAnswerValue = this.splitDictationAnswers(question.dictationAnswer).join(" ");
-        const result = this.normalizeAnswer(answerText) === this.normalizeAnswer(correctAnswerValue)
-            ? AnswerResult.CORRECT
-            : AnswerResult.WRONG;
-        await this.attemptAnswerRepository.upsert({
-            attemptId,
-            questionId,
-            selectedOptionId: null,
-            answerText,
-            result,
-            answeredAt: new Date(),
-        }, ["attemptId", "questionId"]);
-
-        const savedAnswer = await this.attemptAnswerRepository.findOneOrFail({
-            where: { attemptId, questionId }
-        });
-
-        return {
-            answer: savedAnswer,
-            isCorrect: result === AnswerResult.CORRECT,
-            correctAnswers: this.splitDictationAnswers(question.dictationAnswer),
-            explanation: question.explanation,
-            transcript: question.transcript,
-            progress: await this.getProgress(attempt)
-        };
-    }
 
     async submitExam(attemptId: number, userId: string, examId: number, questionIds?: number[]) {
         this.ensurePositiveInteger(attemptId, "attemptId");

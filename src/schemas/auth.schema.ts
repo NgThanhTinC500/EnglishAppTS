@@ -41,3 +41,46 @@ export const loginSchema = z.object({
             .min(1, "Password is required"),
     }).strict(),
 });
+
+export const forgotPasswordSchema = z.object({
+    body: z.object({
+        email: z
+            .string()
+            .trim()
+            .toLowerCase()
+            .email("Email is not valid"),
+    }).strict(),
+});
+
+export const resetPasswordSchema = z.object({
+    body: z.object({
+        password: z
+            .string()
+            .min(8, "Password must be at least 8 characters"),
+        passwordConfirm: z.string(),
+    }).strict().refine(
+        (data) => data.password === data.passwordConfirm,
+        {
+            path: ["passwordConfirm"],
+            message: "Passwords do not match",
+        }
+    ),
+});
+
+export const updatePasswordSchema = z.object({
+    body: z.object({
+        currentPassword: z
+            .string()
+            .min(1, "Current password is required"),
+        newPassword: z
+            .string()
+            .min(8, "Password must be at least 8 characters"),
+        passwordConfirm: z.string(),
+    }).strict().refine(
+        (data) => data.newPassword === data.passwordConfirm,
+        {
+            path: ["passwordConfirm"],
+            message: "Passwords do not match",
+        }
+    ),
+});

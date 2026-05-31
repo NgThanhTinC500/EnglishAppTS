@@ -3,6 +3,7 @@ import { UserService } from "../service/userService";
 import { AuthService } from "../service/authService";
 import { User } from "../entity/User";
 import catchAsync from "../utils/catchAsync";
+import { getJwtCookieOptions } from "../utils/httpConfig";
 
 export class AuthController {
   private authService: AuthService;
@@ -16,17 +17,12 @@ export class AuthController {
   private createSendToken(user: User, statusCode: number, res: Response) {
     const token = this.authService.signToken(user.id);
     const cookieExpiresIn = Number(process.env.JWT_COOKIE_EXPIRES_IN || 90);
-    const cookieOptions = {
-      expires: new Date(
-        Date.now() + cookieExpiresIn * 24 * 60 * 60 * 1000
-      ),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax" as const,
-    };
+    const cookieOptions = getJwtCookieOptions(
+      new Date(Date.now() + cookieExpiresIn * 24 * 60 * 60 * 1000)
+    );
 
     res.cookie("jwt", token, cookieOptions);
-    const { password, ...safeUser } = user;
+    const { password: _password, ...safeUser } = user;
     res.status(statusCode).json({
       status: "success",
       token,
@@ -48,10 +44,7 @@ export class AuthController {
 
   logout = (_req: Request, res: Response) => {
     res.cookie("jwt", "loggedout", {
-      expires: new Date(Date.now() + 10 * 1000),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      ...getJwtCookieOptions(new Date(Date.now() + 10 * 1000)),
     });
     res.status(200).json({ status: "success" });
   };
@@ -88,14 +81,19 @@ export class AuthController {
   });
 
   forgotPassword = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+    const clientUrl =
+      process.env.CLIENT_URL ||
+      process.env.FRONTEND_URL ||
+      req.get("origin") ||
+      `${req.protocol}://${req.get("host")}`;
+
     await this.authService.forgotPassword(
       req.body.email,
-      req.protocol,
-      req.get("host")
+      clientUrl
     );
     res.status(200).json({
       status: "success",
-      message: "Token sent to email!",
+      message: "If this email exists, reset instructions have been sent.",
     });
   });
 

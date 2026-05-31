@@ -1,11 +1,12 @@
 import { Server as HTTPServer } from "http";
 import { Server } from "socket.io";
 import { registerCommentSocket } from "./handlers/comment.handler";
+import { getCorsOrigin } from "../utils/httpConfig";
 
 export const initSocket = (server: HTTPServer): void => {
     const io = new Server(server, {
         cors: {
-            origin: "http://localhost:5173",
+            origin: getCorsOrigin(),
             credentials: true,
         },
     });

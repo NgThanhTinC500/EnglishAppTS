@@ -168,14 +168,11 @@ export class AuthService {
 
     async forgotPassword(
         email: string,
-        protocol: string,
-        host: string
+        clientUrl: string
     ): Promise<void> {
         const user = await this.userService.findByEmail(email);
 
-        if (!user) {
-            throw new AppError("Không tồn tại người dùng với email này", 404);
-        }
+        if (!user) return;
 
         const { rawToken, hashedToken, expiresAt } =
             this.passwordService.createPasswordResetToken();
@@ -185,23 +182,20 @@ export class AuthService {
 
         await this.userService.saveResetToken(user);
 
-        // send URL to user's email
-        const resetURL = `${protocol}://${host}/reset-password/${rawToken}`;
+        const normalizedClientUrl = clientUrl.replace(/\/$/, "");
+        const resetURL = `${normalizedClientUrl}/reset-password/${rawToken}`;
 
         try {
             await sendEmail({
                 email: user.email,
-                subject: "Your password reset token (valid for 10 min)",
-                message: `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`,
+                subject: "Dat lai mat khau TT English",
+                message: `Ban vua yeu cau dat lai mat khau TT English.\n\nVui long bam vao lien ket sau de tao mat khau moi. Lien ket co hieu luc trong 10 phut:\n${resetURL}\n\nNeu ban khong yeu cau dat lai mat khau, vui long bo qua email nay.`,
             });
         } catch {
             user.passwordResetToken = undefined;
             user.passwordResetExpires = undefined;
             await this.userService.saveResetToken(user);
-            throw new AppError(
-                "Có lỗi xảy ra khi gửi email. Vui lòng thử lại sau!",
-                500
-            );
+            return;
         }
     }
 

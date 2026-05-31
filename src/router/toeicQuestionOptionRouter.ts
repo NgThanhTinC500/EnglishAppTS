@@ -1,0 +1,48 @@
+import { Router } from "express";
+import { AuthController } from "../controller/authController";
+import { ToeicQuestionOptionController } from "../controller/toeicQuestionOptionController";
+import { validateRequest } from "../middlewares/validateRequest";
+import {
+    createToeicQuestionOptionSchema,
+    deleteToeicQuestionOptionSchema,
+    getToeicQuestionOptionByIdSchema,
+    getToeicQuestionOptionsByQuestionSchema,
+    updateToeicQuestionOptionSchema,
+} from "../schemas/toeicQuestionOption.schema";
+
+const toeicQuestionOptionRouter = Router();
+const authController = new AuthController();
+const toeicQuestionOptionController = new ToeicQuestionOptionController();
+
+toeicQuestionOptionRouter.use(authController.protect);
+
+toeicQuestionOptionRouter.get(
+    "/toeic/questions/:questionId/options",
+    validateRequest(getToeicQuestionOptionsByQuestionSchema),
+    toeicQuestionOptionController.getAllByQuestion
+);
+toeicQuestionOptionRouter.post(
+    "/toeic/questions/:questionId/options",
+    authController.restrictTo("admin"),
+    validateRequest(createToeicQuestionOptionSchema),
+    toeicQuestionOptionController.create
+);
+toeicQuestionOptionRouter.get(
+    "/toeic/options/:id",
+    validateRequest(getToeicQuestionOptionByIdSchema),
+    toeicQuestionOptionController.getById
+);
+toeicQuestionOptionRouter.patch(
+    "/toeic/options/:id",
+    authController.restrictTo("admin"),
+    validateRequest(updateToeicQuestionOptionSchema),
+    toeicQuestionOptionController.update
+);
+toeicQuestionOptionRouter.delete(
+    "/toeic/options/:id",
+    authController.restrictTo("admin"),
+    validateRequest(deleteToeicQuestionOptionSchema),
+    toeicQuestionOptionController.softDelete
+);
+
+export default toeicQuestionOptionRouter;

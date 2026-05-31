@@ -8,9 +8,8 @@ const userRouter = Router();
 const authController = new AuthController();
 
 
-userRouter.post("/user", UserController.create);
 userRouter.get("/user/:id", UserController.findOne);
-userRouter.put("/user/:id", UserController.update);
+userRouter.put("/user/:id", authController.protect, authController.restrictTo("admin"), UserController.update);
 userRouter.patch("/users/me", authController.protect, uploadImageSingle, handleUploadImageError, UserController.updateMe);
 
 
