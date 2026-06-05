@@ -81,8 +81,8 @@ async findOneBy(condition: FindOptionsWhere<User>) {
   // chỉ cần cập nhật một số trường
   async saveResetToken(user: User): Promise<UpdateResult> {
     return await this.userRepository.update(user.id, {
-      passwordResetToken: user.passwordResetToken,
-      passwordResetExpires: user.passwordResetExpires,
+      passwordResetToken: user.passwordResetToken ?? null,
+      passwordResetExpires: user.passwordResetExpires ?? null,
     });
   }
 

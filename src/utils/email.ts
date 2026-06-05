@@ -7,18 +7,23 @@ interface EmailOptions {
 }
 
 const sendEmail = async (options: EmailOptions): Promise<void> => {
+    const host = process.env.GMAIL_HOST;
+    const port = Number(process.env.GMAIL_PORT);
+    const user = process.env.GMAIL_USERNAME;
+    const pass = process.env.GMAIL_PASSWORD;
+
     const transporter = nodemailer.createTransport({
-        host: process.env.GMAIL_HOST,
-        port: Number(process.env.GMAIL_PORT),
-        secure: true,
+        host,
+        port,
+        secure: port === 465,
         auth: {
-            user: process.env.GMAIL_USERNAME,
-            pass: process.env.GMAIL_PASSWORD,
+            user,
+            pass,
         },
     });
 
     const mailOptions = {
-        from: '"Thanh Tin" <tinnguyenit04@gmail.com>',
+        from: process.env.EMAIL_FROM || `"Thanh Tin" <${user}>`,
         to: options.email,
         subject: options.subject,
         text: options.message,

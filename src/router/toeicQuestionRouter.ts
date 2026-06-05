@@ -15,7 +15,7 @@ const toeicQuestionRouter = Router();
 const authController = new AuthController();
 const toeicQuestionController = new ToeicQuestionController();
 
-toeicQuestionRouter.use(authController.protect);
+
 
 toeicQuestionRouter.get(
     "/toeic/groups/:questionGroupId/questions",
@@ -24,29 +24,34 @@ toeicQuestionRouter.get(
 );
 toeicQuestionRouter.post(
     "/toeic/groups/:questionGroupId/questions",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(createToeicQuestionSchema),
     toeicQuestionController.create
 );
 toeicQuestionRouter.get(
     "/toeic/questions/:id",
+    authController.protect,
     validateRequest(getToeicQuestionByIdSchema),
     toeicQuestionController.getById
 );
 toeicQuestionRouter.patch(
     "/toeic/questions/:id",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(updateToeicQuestionSchema),
     toeicQuestionController.update
 );
 toeicQuestionRouter.patch(
     "/toeic/questions/:id/correct-option",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(setToeicQuestionCorrectOptionSchema),
     toeicQuestionController.setCorrectOption
 );
 toeicQuestionRouter.delete(
     "/toeic/questions/:id",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(deleteToeicQuestionSchema),
     toeicQuestionController.softDelete

@@ -68,12 +68,12 @@ AppDataSource.initialize()
     // setup express app here
     app.use("/api/v1/auth", authRouter);
     app.use("/api/v1", userRouter);
+    app.use("/api/v1", topicRouter);
     app.use("/api/v1", flashcardRouter);
     // app.use("/api/v1", examRouter);
     app.use("/api/v1", blogRouter);
     app.use("/api/v1", questionRouter);
     app.use("/api/v1", attemptRouter);
-    app.use("/api/v1", topicRouter);
     app.use("/api/v1", courseRouter);
     app.use("/api/v1", lessonRouter);
     app.use("/api/v1", lectureRouter);

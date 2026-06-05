@@ -11,11 +11,9 @@ const blogController = new BlogController(new BlogService());
 blogRouter.get("/blogs", blogController.getAllBlogs);
 blogRouter.get("/blogs/:id", blogController.getBlogById);
 
-blogRouter.use(authController.protect, authController.restrictTo("admin"));
-
-blogRouter.get("/admin/blogs", blogController.getAllBlogsForAdmin);
-blogRouter.post("/admin/blogs", uploadImage.single("image"), blogController.createBlog);
-blogRouter.patch("/admin/blogs/:id", uploadImage.single("image"), blogController.updateBlog);
-blogRouter.patch("/admin/blogs/:id/status", blogController.deleteBlog);
+blogRouter.get("/admin/blogs", authController.protect, authController.restrictTo("admin"), blogController.getAllBlogsForAdmin);
+blogRouter.post("/admin/blogs", authController.protect, authController.restrictTo("admin"), uploadImage.single("image"), blogController.createBlog);
+blogRouter.patch("/admin/blogs/:id", authController.protect, authController.restrictTo("admin"), uploadImage.single("image"), blogController.updateBlog);
+blogRouter.patch("/admin/blogs/:id/status", authController.protect, authController.restrictTo("admin"), blogController.deleteBlog);
 
 export default blogRouter;

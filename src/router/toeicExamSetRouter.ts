@@ -14,19 +14,21 @@ const toeicExamSetRouter = Router();
 const authController = new AuthController();
 const toeicExamSetController = new ToeicExamSetController();
 
-toeicExamSetRouter.use(authController.protect);
 
 toeicExamSetRouter.get(
     "/toeic/exam-sets/:id/full",
+    authController.protect,
     toeicExamSetController.getFull
 );
 toeicExamSetRouter.post(
     "/toeic/exam-sets/:id/validate",
+    authController.protect,
     authController.restrictTo("admin"),
     toeicExamSetController.validate
 );
 toeicExamSetRouter.patch(
     "/toeic/exam-sets/:id/publish",
+    authController.protect,
     authController.restrictTo("admin"),
     toeicExamSetController.publish
 );
@@ -38,23 +40,27 @@ toeicExamSetRouter.get(
 );
 toeicExamSetRouter.get(
     "/toeic-collections/:collectionId/exam-sets/:id",
+    authController.protect,
     validateRequest(getToeicExamSetByIdSchema),
     toeicExamSetController.getById
 );
 toeicExamSetRouter.post(
     "/toeic-collections/:collectionId/exam-sets",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(createToeicExamSetSchema),
     toeicExamSetController.create
 );
 toeicExamSetRouter.patch(
     "/toeic-collections/:collectionId/exam-sets/:id",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(updateToeicExamSetSchema),
     toeicExamSetController.update
 );
 toeicExamSetRouter.delete(
     "/toeic-collections/:collectionId/exam-sets/:id",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(deleteToeicExamSetSchema),
     toeicExamSetController.softDelete

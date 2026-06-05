@@ -14,7 +14,7 @@ const toeicQuestionOptionRouter = Router();
 const authController = new AuthController();
 const toeicQuestionOptionController = new ToeicQuestionOptionController();
 
-toeicQuestionOptionRouter.use(authController.protect);
+
 
 toeicQuestionOptionRouter.get(
     "/toeic/questions/:questionId/options",
@@ -23,23 +23,27 @@ toeicQuestionOptionRouter.get(
 );
 toeicQuestionOptionRouter.post(
     "/toeic/questions/:questionId/options",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(createToeicQuestionOptionSchema),
     toeicQuestionOptionController.create
 );
 toeicQuestionOptionRouter.get(
     "/toeic/options/:id",
+    authController.protect,
     validateRequest(getToeicQuestionOptionByIdSchema),
     toeicQuestionOptionController.getById
 );
 toeicQuestionOptionRouter.patch(
     "/toeic/options/:id",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(updateToeicQuestionOptionSchema),
     toeicQuestionOptionController.update
 );
 toeicQuestionOptionRouter.delete(
     "/toeic/options/:id",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(deleteToeicQuestionOptionSchema),
     toeicQuestionOptionController.softDelete

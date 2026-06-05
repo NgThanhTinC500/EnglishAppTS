@@ -6,11 +6,10 @@ const vocabularyRouter = Router();
 const vocabularyController = new VocabularyController();
 const authController = new AuthController();
 
-vocabularyRouter.use(authController.protect);
-
 // Vocabulary sets
 vocabularyRouter.post(
   "/vocabsets",
+  authController.protect,
   authController.restrictTo("admin"),
   vocabularyController.createVocabularySet
 );
@@ -24,11 +23,13 @@ vocabularyRouter.get(
 );
 vocabularyRouter.patch(
   "/vocabsets/:setId",
+  authController.protect,
   authController.restrictTo("admin"),
   vocabularyController.updateVocabularySet
 );
 vocabularyRouter.delete(
   "/vocabsets/:setId",
+  authController.protect,
   authController.restrictTo("admin"),
   vocabularyController.deleteVocabularySet
 );
@@ -45,16 +46,19 @@ vocabularyRouter.get(
 );
 vocabularyRouter.post(
   "/vocabsets/:setId/vocabs",
+  authController.protect,
   authController.restrictTo("admin"),
   vocabularyController.createVocabulary
 );
 vocabularyRouter.patch(
   "/vocabsets/:setId/vocabs/:vocabularyId",
+  authController.protect,
   authController.restrictTo("admin"),
   vocabularyController.updateVocabulary
 );
 vocabularyRouter.delete(
   "/vocabsets/:setId/vocabs/:vocabularyId",
+  authController.protect,
   authController.restrictTo("admin"),
   vocabularyController.deleteVocabulary
 );
@@ -63,10 +67,12 @@ vocabularyRouter.delete(
 // get vocabulary practice items by topic id
 vocabularyRouter.get(
   "/vocabulary/topics/:topicId/practice",
+  authController.protect,
   vocabularyController.getVocabularyPracticeItems
 );
 vocabularyRouter.post(
   "/vocabulary/practice/check",
+  authController.protect,
   vocabularyController.checkVocabularyPracticeAnswer
 );
 

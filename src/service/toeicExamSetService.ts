@@ -26,10 +26,24 @@ const TOEIC_PART_RULES: Record<number, {
 };
 
 const TOEIC_TOTAL_QUESTIONS = 200;
+const TOEIC_PART_NUMBERS = Object.keys(TOEIC_PART_RULES)
+    .map(Number)
+    .sort((first, second) => first - second);
 
 interface FullExamOptions {
     includeCorrect?: boolean;
     requirePublished?: boolean;
+}
+
+interface ToeicPartProgress {
+    partNumber: number;
+    examPartId: number | null;
+    requiredQuestionCount: number;
+    actualQuestionCount: number;
+    groupCount: number;
+    firstQuestion: number;
+    lastQuestion: number;
+    isComplete: boolean;
 }
 
 export class ToeicExamSetService {
@@ -104,6 +118,25 @@ export class ToeicExamSetService {
         ) ?? 0;
     }
 
+    private buildPartsProgress(parts: ToeicExamPart[]): ToeicPartProgress[] {
+        return TOEIC_PART_NUMBERS.map((partNumber) => {
+            const rule = TOEIC_PART_RULES[partNumber];
+            const part = parts.find((item) => item.partNumber === partNumber);
+            const actualQuestionCount = part ? this.countPartQuestions(part) : 0;
+
+            return {
+                partNumber,
+                examPartId: part?.id ?? null,
+                requiredQuestionCount: rule.questionCount,
+                actualQuestionCount,
+                groupCount: part?.questionGroups?.length ?? 0,
+                firstQuestion: rule.firstQuestion,
+                lastQuestion: rule.lastQuestion,
+                isComplete: Boolean(part) && actualQuestionCount === rule.questionCount,
+            };
+        });
+    }
+
     private toQuestionPayload(question: ToeicQuestion, includeCorrect: boolean) {
         const options = question.options?.map((option) => ({
             id: option.id,
@@ -166,6 +199,7 @@ export class ToeicExamSetService {
     private validateExamSetEntity(examSet: ToeicExamSet) {
         const issues: string[] = [];
         const parts = examSet.parts ?? [];
+        const partsProgress = this.buildPartsProgress(parts);
         const seenQuestionNumbers = new Set<number>();
         let totalQuestions = 0;
 
@@ -248,6 +282,7 @@ export class ToeicExamSetService {
             isValid: issues.length === 0,
             issues,
             totalQuestions,
+            partsProgress,
         };
     }
 
@@ -286,6 +321,16 @@ export class ToeicExamSetService {
     async publish(id: number, isPublished = true) {
         const examSet = await this.getFullEntity(id);
 
+        if (isPublished) {
+            const validation = this.validateExamSetEntity(examSet);
+            if (!validation.isValid) {
+                throw new AppError(
+                    `Cannot publish invalid TOEIC exam set: ${validation.issues.join("; ")}`,
+                    400
+                );
+            }
+        }
+
         examSet.isPublished = isPublished;
         return this.toeicExamSetRepository.save(examSet);
     }
@@ -300,13 +345,37 @@ export class ToeicExamSetService {
             throw new AppError("Title is required", 400);
         }
 
-        const examSet = this.toeicExamSetRepository.create({
-            collectionId: data.collectionId,
-            title: data.title.trim(),
-            isPublished: data.isPublished ?? false,
-        });
+        return AppDataSource.transaction(async (manager) => {
+            const examSet = manager.create(ToeicExamSet, {
+                collectionId: data.collectionId,
+                title: data.title!.trim(),
+                isPublished: data.isPublished ?? false,
+            });
 
-        return this.toeicExamSetRepository.save(examSet);
+            const savedExamSet = await manager.save(examSet);
+            const parts = TOEIC_PART_NUMBERS.map((partNumber) =>
+                manager.create(ToeicExamPart, {
+                    examSetId: savedExamSet.id,
+                    partNumber,
+                    questionCount: TOEIC_PART_RULES[partNumber].questionCount,
+                    durationSeconds: null,
+                })
+            );
+
+            await manager.save(parts);
+
+            return manager.findOne(ToeicExamSet, {
+                where: { id: savedExamSet.id },
+                relations: {
+                    parts: true,
+                },
+                order: {
+                    parts: {
+                        partNumber: "ASC",
+                    },
+                },
+            });
+        });
     }
 
     async update(collectionId: number, id: number, data: Partial<ToeicExamSet>) {

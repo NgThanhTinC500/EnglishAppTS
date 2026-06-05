@@ -11,24 +11,26 @@ const toeicCollectionRouter = Router();
 const authController = new AuthController();
 const toeicCollectionController = new ToeicCollectionController();
 
-toeicCollectionRouter.use(authController.protect);
 
 toeicCollectionRouter.get("/", toeicCollectionController.getAllToeicCollections);
 toeicCollectionRouter.get("/:id", toeicCollectionController.getToeicCollectionById);
 toeicCollectionRouter.post(
     "/",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(createToeicCollectionSchema),
     toeicCollectionController.createToeicCollection
 );
 toeicCollectionRouter.patch(
     "/:id",
+    authController.protect,
     authController.restrictTo("admin"),
     validateRequest(updateToeicCollectionSchema),
     toeicCollectionController.updateToeicCollection
 );
 toeicCollectionRouter.delete(
     "/:id",
+    authController.protect,
     authController.restrictTo("admin"),
     toeicCollectionController.deleteToeicCollection
 );

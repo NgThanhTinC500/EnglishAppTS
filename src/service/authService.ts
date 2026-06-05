@@ -188,14 +188,14 @@ export class AuthService {
         try {
             await sendEmail({
                 email: user.email,
-                subject: "Dat lai mat khau TT English",
-                message: `Ban vua yeu cau dat lai mat khau TT English.\n\nVui long bam vao lien ket sau de tao mat khau moi. Lien ket co hieu luc trong 10 phut:\n${resetURL}\n\nNeu ban khong yeu cau dat lai mat khau, vui long bo qua email nay.`,
+                subject: "Đặt lại mật khẩu TT English",
+                message: `Bạn vừa yêu cầu đặt lại mật khẩu TT English.\n\nVui lòng bấm vào liên kết sau để tạo mật khẩu mới. Liên kết có hiệu lực trong 10 phút:\n${resetURL}\n\n nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.`,
             });
         } catch {
-            user.passwordResetToken = undefined;
-            user.passwordResetExpires = undefined;
+            user.passwordResetToken = null;
+            user.passwordResetExpires = null;
             await this.userService.saveResetToken(user);
-            return;
+            throw new AppError("Could not send password reset email", 500);
         }
     }
 
