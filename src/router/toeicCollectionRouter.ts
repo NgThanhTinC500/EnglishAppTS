@@ -5,7 +5,7 @@ import { validateRequest } from "../middlewares/validateRequest";
 import {
     createToeicCollectionSchema,
     updateToeicCollectionSchema,
-} from "../schemas/toeicCollection.schema";
+} from "../validations/toeicCollection.schema";
 
 const toeicCollectionRouter = Router();
 const authController = new AuthController();

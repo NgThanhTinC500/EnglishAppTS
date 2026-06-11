@@ -12,7 +12,6 @@ interface CreateGroupImageInput {
 }
 
 interface CreateGroupInput {
-    groupOrder: number;
     audioUrl?: string | null;
     audioDurationSeconds?: number | null;
     transcriptEn?: string | null;
@@ -40,6 +39,17 @@ export class ToeicQuestionGroupService {
         if (!Number.isInteger(value) || value <= 0) {
             throw new AppError(`${fieldName} must be a positive integer`, 400);
         }
+    }
+
+    private async getNextGroupOrder(examPartId: number) {
+        const result = await this.toeicQuestionGroupRepository
+            .createQueryBuilder("group")
+            .withDeleted()
+            .select("COALESCE(MAX(group.groupOrder), 0)", "maxGroupOrder")
+            .where("group.examPartId = :examPartId", { examPartId })
+            .getRawOne<{ maxGroupOrder: string | number | null }>();
+
+        return Number(result?.maxGroupOrder ?? 0) + 1;
     }
 
     private validateImages(images: CreateGroupImageInput[]) {
@@ -131,23 +141,7 @@ export class ToeicQuestionGroupService {
 
     async create(examPartId: number, data: CreateGroupInput) {
         await this.ensureExamPartExists(examPartId);
-
-        if (data.groupOrder === undefined) {
-            throw new AppError("groupOrder is required", 400);
-        }
-        this.ensurePositiveInteger(data.groupOrder, "groupOrder");
-
-        const existingGroup = await this.toeicQuestionGroupRepository.findOne({
-            where: {
-                examPartId,
-                groupOrder: data.groupOrder,
-            },
-            withDeleted: true,
-        });
-
-        if (existingGroup) {
-            throw new AppError("Group order already exists in this part", 400);
-        }
+        const groupOrder = await this.getNextGroupOrder(examPartId);
 
         // Validate images if provided
         if (data.images && data.images.length > 0) {
@@ -158,7 +152,7 @@ export class ToeicQuestionGroupService {
         return AppDataSource.transaction(async (transactionalEntityManager) => {
             const group = transactionalEntityManager.create(ToeicQuestionGroup, {
                 examPartId,
-                groupOrder: data.groupOrder,
+                groupOrder,
                 audioUrl: data.audioUrl ?? null,
                 audioDurationSeconds: data.audioDurationSeconds ?? null,
                 transcriptEn: data.transcriptEn ?? null,

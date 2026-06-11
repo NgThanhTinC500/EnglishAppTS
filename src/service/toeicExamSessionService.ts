@@ -1,4 +1,4 @@
-import { In, Repository } from "typeorm";
+import { In, LessThanOrEqual, Repository } from "typeorm";
 import { AppDataSource } from "../data-source";
 import { ToeicExamPart } from "../entity/ToeicExamPart";
 import { ToeicExamSession, ToeicSessionStatus } from "../entity/ToeicExamSession";
@@ -32,6 +32,22 @@ export class ToeicExamSessionService {
         this.sessionAnswerRepository = AppDataSource.getRepository(ToeicSessionAnswer);
         this.examSetRepository = AppDataSource.getRepository(ToeicExamSet);
         this.optionRepository = AppDataSource.getRepository(ToeicQuestionOption);
+    }
+
+    async expireOverdueSessions(now = new Date()) {
+        const expiresBefore = new Date(now.getTime() - TOEIC_DURATION_SECONDS * 1000);
+        const result = await this.sessionRepository.update(
+            {
+                status: ToeicSessionStatus.IN_PROGRESS,
+                startedAt: LessThanOrEqual(expiresBefore),
+            },
+            {
+                status: ToeicSessionStatus.EXPIRED,
+                remainingSeconds: 0,
+            }
+        );
+
+        return result.affected ?? 0;
     }
 
     private ensurePositiveInteger(value: number, fieldName: string) {

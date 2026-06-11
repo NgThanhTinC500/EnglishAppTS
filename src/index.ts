@@ -27,10 +27,12 @@ import toeicQuestionGroupRouter from "./router/toeicQuestionGroupRouter";
 import toeicQuestionRouter from "./router/toeicQuestionRouter";
 import toeicQuestionOptionRouter from "./router/toeicQuestionOptionRouter";
 import toeicExamSessionRouter from "./router/toeicExamSessionRouter";
+import progressRouter from "./router/progressRouter";
 import { getCorsOrigin } from "./utils/httpConfig";
 dotenv.config();
 import { createServer } from "http";
 import { initSocket } from "./socket/index";
+import { startToeicSessionExpirationJob } from "./jobs/toeicSessionExpirationJob";
 
 console.log('NODE_ENV =', process.env.NODE_ENV);
 const corsOptions = {
@@ -46,6 +48,7 @@ AppDataSource.initialize()
     const server = createServer(app);
 
     initSocket(server);
+    startToeicSessionExpirationJob();
 
     const limiter = rateLimit({
       max: 1000,
@@ -85,6 +88,7 @@ AppDataSource.initialize()
     app.use("/api/v1", toeicQuestionRouter);
     app.use("/api/v1", toeicQuestionOptionRouter);
     app.use("/api/v1", toeicExamSessionRouter);
+    app.use("/api/v1", progressRouter);
 
     app.use(globalErrorHandler);
 

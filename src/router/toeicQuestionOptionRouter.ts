@@ -8,7 +8,7 @@ import {
     getToeicQuestionOptionByIdSchema,
     getToeicQuestionOptionsByQuestionSchema,
     updateToeicQuestionOptionSchema,
-} from "../schemas/toeicQuestionOption.schema";
+} from "../validations/toeicQuestionOption.schema";
 
 const toeicQuestionOptionRouter = Router();
 const authController = new AuthController();

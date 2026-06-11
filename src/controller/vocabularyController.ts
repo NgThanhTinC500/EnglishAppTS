@@ -31,6 +31,14 @@ export class VocabularyController {
         return id;
     }
 
+    private getUserId(req: Request) {
+        if (!req.user) {
+            throw new AppError("Unauthorized", 401);
+        }
+
+        return req.user.id;
+    }
+
     /*
         ======================
         VOCABULARY SET
@@ -154,6 +162,79 @@ export class VocabularyController {
                 success: true,
                 data: result,
                 message: "Check vocabulary answer successfully",
+            });
+        }
+    );
+
+    startPracticeSession = catchAsync(
+        async (req: Request, res: Response) => {
+            const userId = this.getUserId(req);
+            const vocabSetId = this.parseId(
+                String(req.body?.vocabSetId),
+                "vocabSetId"
+            );
+            const mode = String(req.body?.mode ?? "");
+
+            const result = await this.vocabularyService.startPracticeSession(
+                userId,
+                vocabSetId,
+                mode
+            );
+
+            res.status(201).json({
+                success: true,
+                data: result,
+                message: "Start vocabulary practice session successfully",
+            });
+        }
+    );
+
+    recordFlashcardAnswer = catchAsync(
+        async (req: Request, res: Response) => {
+            const userId = this.getUserId(req);
+            const sessionId = this.parseId(req.params.sessionId, "sessionId");
+            const vocabularyId = this.parseId(
+                String(req.body?.vocabularyId),
+                "vocabularyId"
+            );
+            const resultValue = String(req.body?.result ?? "");
+
+            const result = await this.vocabularyService.recordFlashcardAnswer(
+                userId,
+                sessionId,
+                vocabularyId,
+                resultValue
+            );
+
+            res.status(201).json({
+                success: true,
+                data: result,
+                message: "Record flashcard answer successfully",
+            });
+        }
+    );
+
+    submitSpellingAnswer = catchAsync(
+        async (req: Request, res: Response) => {
+            const userId = this.getUserId(req);
+            const sessionId = this.parseId(req.params.sessionId, "sessionId");
+            const vocabularyId = this.parseId(
+                String(req.body?.vocabularyId),
+                "vocabularyId"
+            );
+            const answerText = String(req.body?.answerText ?? "");
+
+            const result = await this.vocabularyService.submitSpellingAnswer(
+                userId,
+                sessionId,
+                vocabularyId,
+                answerText
+            );
+
+            res.status(201).json({
+                success: true,
+                data: result,
+                message: "Submit spelling answer successfully",
             });
         }
     );

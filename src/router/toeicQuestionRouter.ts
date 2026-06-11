@@ -9,7 +9,7 @@ import {
     getToeicQuestionsByGroupSchema,
     setToeicQuestionCorrectOptionSchema,
     updateToeicQuestionSchema,
-} from "../schemas/toeicQuestion.schema";
+} from "../validations/toeicQuestion.schema";
 
 const toeicQuestionRouter = Router();
 const authController = new AuthController();

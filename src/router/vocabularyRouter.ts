@@ -75,5 +75,20 @@ vocabularyRouter.post(
   authController.protect,
   vocabularyController.checkVocabularyPracticeAnswer
 );
+vocabularyRouter.post(
+  "/vocabulary/practice-sessions",
+  authController.protect,
+  vocabularyController.startPracticeSession
+);
+vocabularyRouter.post(
+  "/vocabulary/practice-sessions/:sessionId/flashcard-answer",
+  authController.protect,
+  vocabularyController.recordFlashcardAnswer
+);
+vocabularyRouter.post(
+  "/vocabulary/practice-sessions/:sessionId/spelling-answer",
+  authController.protect,
+  vocabularyController.submitSpellingAnswer
+);
 
 export default vocabularyRouter;

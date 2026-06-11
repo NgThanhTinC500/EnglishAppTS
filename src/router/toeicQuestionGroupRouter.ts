@@ -12,7 +12,7 @@ import {
     getToeicQuestionGroupByIdSchema,
     getToeicQuestionGroupsByPartSchema,
     updateToeicQuestionGroupSchema,
-} from "../schemas/toeicQuestionGroup.schema";
+} from "../validations/toeicQuestionGroup.schema";
 
 const toeicQuestionGroupRouter = Router();
 const authController = new AuthController();

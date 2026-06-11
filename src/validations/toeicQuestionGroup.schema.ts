@@ -23,7 +23,6 @@ export const getToeicQuestionGroupsByPartSchema = z.object({
 
 export const createToeicQuestionGroupSchema = z.object({
     body: z.object({
-        groupOrder: z.number().int().positive("groupOrder must be a positive integer"),
         audioUrl: nullableStringSchema.optional(),
         audioDurationSeconds: nullableDurationSchema.optional(),
         transcriptEn: nullableStringSchema.optional(),

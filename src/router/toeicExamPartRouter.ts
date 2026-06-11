@@ -8,7 +8,7 @@ import {
     getToeicExamPartByIdSchema,
     getToeicExamPartsByExamSetSchema,
     updateToeicExamPartSchema,
-} from "../schemas/toeicExamPart.schema";
+} from "../validations/toeicExamPart.schema";
 
 const toeicExamPartRouter = Router();
 const authController = new AuthController();

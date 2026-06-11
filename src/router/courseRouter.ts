@@ -7,9 +7,9 @@ const courseRouter = Router();
 const courseController = new CourseController();
 const authController = new AuthController();
 
+courseRouter.get("/courses", courseController.getAllCourses);
+courseRouter.get("/courses/:courseId", courseController.getCourseDetail);
 courseRouter.post("/courses", authController.protect, authController.restrictTo("admin"), courseController.createCourse);
-courseRouter.get("/courses",  authController.protect, authController.restrictTo("admin"),courseController.getAllCourses);
-courseRouter.get("/courses/:courseId", authController.protect, authController.restrictTo("admin"), courseController.getCourseDetail);
 courseRouter.patch("/courses/:courseId", authController.protect, authController.restrictTo("admin"), courseController.updateCourse);
 courseRouter.delete("/courses/:courseId", authController.protect, authController.restrictTo("admin"), courseController.deleteCourse);
 
