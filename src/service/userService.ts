@@ -36,14 +36,16 @@ export class UserService {
   //   return await this.findOne(id);
   // }
 
+  
   // Partial: chỉ cần truyền một số trường cần cập nhật
   async updateUser(id: string, data: Partial<User>) {
-    const { name } = data;
+    const { name, photo } = data;
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new AppError("No user found with that ID", 404);
     }
     if (name) user.name = name;
+    if (photo !== undefined) user.photo = photo;
     await this.userRepository.save(user);
     return await this.findOne(id);
   }
@@ -63,9 +65,9 @@ export class UserService {
 
   // user.service.ts
   // lấy kiểu dữ liệu trong entity User
-  async findByCondition(condition: FindOptionsWhere<User>) {
-    return await this.userRepository.findOne({ where: condition });
-  }
+async findOneBy(condition: FindOptionsWhere<User>) {
+  return await this.userRepository.findOne({ where: condition });
+}
 
   async save(user: User): Promise<User> {
     return await this.userRepository.save(user);
@@ -79,8 +81,8 @@ export class UserService {
   // chỉ cần cập nhật một số trường
   async saveResetToken(user: User): Promise<UpdateResult> {
     return await this.userRepository.update(user.id, {
-      passwordResetToken: user.passwordResetToken,
-      passwordResetExpires: user.passwordResetExpires,
+      passwordResetToken: user.passwordResetToken ?? null,
+      passwordResetExpires: user.passwordResetExpires ?? null,
     });
   }
 

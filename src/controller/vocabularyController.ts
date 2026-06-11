@@ -1,123 +1,340 @@
 import { Request, Response } from "express";
-import { VocabularyService } from "../service/vocabularyService";
-import { json } from "stream/consumers";
 import catchAsync from "../utils/catchAsync";
+import { AppError } from "../utils/appError";
+import { VocabularyService } from "../service/vocabularyService";
 
 export class VocabularyController {
     private vocabularyService = new VocabularyService();
 
-    // CONTROLLER WITH FLASH CARD DECK
-    createVocabSets = catchAsync(async (req: Request, res: Response) => {
-        console.log("test")
-        const { name } = req.body;
-        const userId = req.user.id;
-        const deckData = {
-            userId: userId,
-            name: name,
+    private getRouteParam(
+        value: string | string[] | undefined,
+        fieldName: string
+    ) {
+        if (typeof value !== "string") {
+            throw new AppError(`Invalid ${fieldName}`, 400);
         }
-        const deck = await this.vocabularyService.createVocabSets(deckData)
-        
-        res.status(201).json({
-            success: true,
-            data: deck,
-            message: "Deck created successfully"
-        })
-    })
 
-    getAllVocabSets = catchAsync(async (req: Request, res: Response) => {
-            const userId = req.user.id;
-        const decks = await this.vocabularyService.getAllVocabSets(userId)
-        res.status(200).json({
-            success: true,
-            result: decks.length,
-            data: decks,
-            message: "Lay tat ca deck",
-        })
-    })
+        return value;
+    }
 
-    getVocabSetDetail = catchAsync(async (req: Request, res: Response) => {
-        const deckId = Number(req.params.vocabsetsId)
-        const deckItem = await this.vocabularyService.getVocabSetById(deckId)
-        res.status(200).json({
-            success: true,
-            data: deckItem,
-            message: "Get Deck by ID",
-        })
-    })
+    private parseId(
+        value: string | string[] | undefined,
+        fieldName = "id"
+    ) {
+        const normalizedValue = this.getRouteParam(value, fieldName);
+        const id = Number(normalizedValue);
 
-    updateVocabSets = catchAsync(async (req: Request, res: Response) => {
-        const vocabsetsId = Number(req.params.vocabsetsId)
-        const deckData = req.body
-        const deckItem = await this.vocabularyService.updateVocabSets(deckData, vocabsetsId)
-        res.status(200).json({
-            success: true,
-            data: deckItem,
-            message: "Get Deck by ID",
-        })
-    })
-
-    deleteVocabSets = catchAsync(async (req: Request, res: Response) => {
-        const deckId = Number(req.params.vocabsetsId)
-        await this.vocabularyService.deleteVocabSets(deckId)
-        res.status(204).json({
-            message: "Da xoa thanh cong"
-        })
-    })
-
-
-    // CONTROLLER WITH FLASH CARD 
-
-    createVocab = catchAsync(async (req: Request, res: Response) => {
-        const deckId = Number(req.params.vocabsetsId)
-        const flashcardData = req.body
-
-        const flashcard = await this.vocabularyService.createVocabCard(deckId, flashcardData)
-        res.status(201).json({
-            success: true,
-            data: flashcard,
-            message: "TAO THANH CONG"
-        })
-    })
-
-
-    updateVocab = catchAsync(async (req: Request, res: Response) => {
-        const cardId = Number(req.params.vocabsId);
-        const cardData = req.body
-        if (!cardId) {
-            throw new Error("KO co card Id nay")
+        if (!Number.isInteger(id) || id <= 0) {
+            throw new AppError(`Invalid ${fieldName}`, 400);
         }
-        const flashcard = await this.vocabularyService.updateVocabCard(cardId, cardData)
-        res.status(201).json({
-            success: true,
-            data: flashcard,
-            message: "UPDATE THANH CONG"
-        })
 
-    })
+        return id;
+    }
 
-    deleteVocab = catchAsync(async (req: Request, res: Response) => {
-        const cardId = Number(req.params.vocabsId);
-        await this.vocabularyService.deleteVocabCard(cardId)
-        res.status(204).json({
-            message: "Da xoa thanh cong"
-        })
-    })
+    private getUserId(req: Request) {
+        if (!req.user) {
+            throw new AppError("Unauthorized", 401);
+        }
 
-    getAllVocab = catchAsync(async (req: Request, res: Response) => {
-        const deckId = Number(req.params.vocabsetsId);
-        const allFlashcard = await this.vocabularyService.getAllVocab(deckId)
-        res.status(200).json({
-            data: allFlashcard,
-            message: "Get thanh cong"
-        })
-    })
-    getVocabDetail = catchAsync(async (req: Request, res: Response) => {
-        const vocabsetsId = Number(req.params.vocabsetsId);
-        const cardId = Number(req.params.vocabsId);
-        const cardDetail = await this.vocabularyService.getVocabCardDetail(vocabsetsId, cardId)
-        res.status(200).json({
-            data: cardDetail,
-            message: "Lay card detail thanh cong"
-        })
-    })
+        return req.user.id;
+    }
+
+    /*
+        ======================
+        VOCABULARY SET
+        ======================
+    */
+
+    createVocabularySet = catchAsync(
+        async (req: Request, res: Response) => {
+            const userId = String(req.user?.id);
+            const result = await this.vocabularyService.createVocabularySet(
+                userId,
+                req.body
+            );
+
+            res.status(201).json({
+                success: true,
+                data: result,
+                message: "Create vocabulary set successfully",
+            });
+        }
+    );
+
+    getAllVocabularySets = catchAsync(
+        async (req: Request, res: Response) => {
+            const result = await this.vocabularyService.getAllVocabularySets();
+
+            res.status(200).json({
+                success: true,
+                total: result.length,
+                data: result,
+                message: "Get vocabulary sets successfully",
+            });
+        }
+    );
+
+    getVocabularySetDetail = catchAsync(
+        async (req: Request, res: Response) => {
+            const setId = this.parseId(req.params.setId, "setId");
+
+            const result = await this.vocabularyService.getVocabularySetById(
+                setId
+            );
+
+            res.status(200).json({
+                success: true,
+                data: result,
+                message: "Get vocabulary set successfully",
+            });
+        }
+    );
+
+    updateVocabularySet = catchAsync(
+        async (req: Request, res: Response) => {
+            const setId = this.parseId(req.params.setId, "setId");
+
+            const result = await this.vocabularyService.updateVocabularySet(
+                setId,
+                req.body
+            );
+
+            res.status(200).json({
+                success: true,
+                data: result,
+                message: "Update vocabulary set successfully",
+            });
+        }
+    );
+
+    deleteVocabularySet = catchAsync(
+        async (req: Request, res: Response) => {
+            const setId = this.parseId(req.params.setId, "setId");
+
+            await this.vocabularyService.deleteVocabularySet(setId);
+
+            res.status(200).json({
+                success: true,
+                data: null,
+                message: "Delete vocabulary set successfully",
+            });
+        }
+    );
+
+    /*
+        ======================
+        VOCABULARY
+        ======================
+    */
+
+    getVocabularyPracticeItems = catchAsync(
+        async (req: Request, res: Response) => {
+            const setId = this.parseId(req.params.topicId, "topicId");
+
+            const result = await this.vocabularyService.getVocabularyPracticeItems(
+                setId
+            );
+
+            res.status(200).json({
+                success: true,
+                total: result.length,
+                data: result,
+                message: "Get vocabulary practice items successfully",
+            });
+        }
+    );
+
+    checkVocabularyPracticeAnswer = catchAsync(
+        async (req: Request, res: Response) => {
+            const vocabularyId = this.parseId(
+                String(req.body?.vocabularyId),
+                "vocabularyId"
+            );
+            const answerText = String(req.body?.answerText ?? "");
+
+            const result =
+                await this.vocabularyService.checkVocabularyPracticeAnswer(
+                    vocabularyId,
+                    answerText
+                );
+
+            res.status(200).json({
+                success: true,
+                data: result,
+                message: "Check vocabulary answer successfully",
+            });
+        }
+    );
+
+    startPracticeSession = catchAsync(
+        async (req: Request, res: Response) => {
+            const userId = this.getUserId(req);
+            const vocabSetId = this.parseId(
+                String(req.body?.vocabSetId),
+                "vocabSetId"
+            );
+            const mode = String(req.body?.mode ?? "");
+
+            const result = await this.vocabularyService.startPracticeSession(
+                userId,
+                vocabSetId,
+                mode
+            );
+
+            res.status(201).json({
+                success: true,
+                data: result,
+                message: "Start vocabulary practice session successfully",
+            });
+        }
+    );
+
+    recordFlashcardAnswer = catchAsync(
+        async (req: Request, res: Response) => {
+            const userId = this.getUserId(req);
+            const sessionId = this.parseId(req.params.sessionId, "sessionId");
+            const vocabularyId = this.parseId(
+                String(req.body?.vocabularyId),
+                "vocabularyId"
+            );
+            const resultValue = String(req.body?.result ?? "");
+
+            const result = await this.vocabularyService.recordFlashcardAnswer(
+                userId,
+                sessionId,
+                vocabularyId,
+                resultValue
+            );
+
+            res.status(201).json({
+                success: true,
+                data: result,
+                message: "Record flashcard answer successfully",
+            });
+        }
+    );
+
+    submitSpellingAnswer = catchAsync(
+        async (req: Request, res: Response) => {
+            const userId = this.getUserId(req);
+            const sessionId = this.parseId(req.params.sessionId, "sessionId");
+            const vocabularyId = this.parseId(
+                String(req.body?.vocabularyId),
+                "vocabularyId"
+            );
+            const answerText = String(req.body?.answerText ?? "");
+
+            const result = await this.vocabularyService.submitSpellingAnswer(
+                userId,
+                sessionId,
+                vocabularyId,
+                answerText
+            );
+
+            res.status(201).json({
+                success: true,
+                data: result,
+                message: "Submit spelling answer successfully",
+            });
+        }
+    );
+
+    createVocabulary = catchAsync(
+        async (req: Request, res: Response) => {
+            const setId = this.parseId(req.params.setId, "setId");
+
+            const result = await this.vocabularyService.createVocabulary(
+                setId,
+                req.body
+            );
+
+            res.status(201).json({
+                success: true,
+                data: result,
+                message: "Create vocabulary successfully",
+            });
+        }
+    );
+
+    getVocabulariesBySetId = catchAsync(
+        async (req: Request, res: Response) => {
+            const setId = this.parseId(req.params.setId, "setId");
+
+            const result = await this.vocabularyService.getVocabulariesBySetId(
+                setId
+            );
+
+            res.status(200).json({
+                success: true,
+                total: result.length,
+                data: result,
+                message: "Get vocabularies successfully",
+            });
+        }
+    );
+
+    getVocabularyDetail = catchAsync(
+        async (req: Request, res: Response) => {
+            const setId = this.parseId(req.params.setId, "setId");
+
+            const vocabularyId = this.parseId(
+                req.params.vocabularyId,
+                "vocabularyId"
+            );
+
+            const result = await this.vocabularyService.getVocabularyDetail(
+                setId,
+                vocabularyId
+            );
+
+            res.status(200).json({
+                success: true,
+                data: result,
+                message: "Get vocabulary detail successfully",
+            });
+        }
+    );
+
+    updateVocabulary = catchAsync(
+        async (req: Request, res: Response) => {
+            const setId = this.parseId(req.params.setId, "setId");
+            const vocabularyId = this.parseId(
+                req.params.vocabularyId,
+                "vocabularyId"
+            );
+
+            const result = await this.vocabularyService.updateVocabulary(
+                setId,
+                vocabularyId,
+                req.body
+            );
+
+            res.status(200).json({
+                success: true,
+                data: result,
+                message: "Update vocabulary successfully",
+            });
+        }
+    );
+
+    deleteVocabulary = catchAsync(
+        async (req: Request, res: Response) => {
+            const setId = this.parseId(req.params.setId, "setId");
+            const vocabularyId = this.parseId(
+                req.params.vocabularyId,
+                "vocabularyId"
+            );
+
+            await this.vocabularyService.deleteVocabulary(
+                setId,
+                vocabularyId
+            );
+
+            res.status(200).json({
+                success: true,
+                data: null,
+                message: "Delete vocabulary successfully",
+            });
+        }
+    );
 }

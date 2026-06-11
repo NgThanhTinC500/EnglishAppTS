@@ -1,84 +1,576 @@
 import { AppDataSource } from "../data-source";
-
 import { VocabularySet } from "../entity/VocabularySet";
 import { Vocabulary } from "../entity/Vocabulary";
+import { AppError } from "../utils/appError";
+import { UserRole } from "../entity/User";
+import {
+    UserVocabularyProgress,
+    VocabularyProgressStatus,
+} from "../entity/UserVocabularyProgress";
+import {
+    VocabularyPracticeSession,
+} from "../entity/VocabularyPracticeSession";
+import {
+    VocabularyPracticeAnswer,
+} from "../entity/VocabularyPracticeAnswer";
+import {
+    VocabularyPracticeMode,
+    VocabularyPracticeResult,
+} from "../entity/VocabularyPracticeEnums";
 
 export class VocabularyService {
-    private vocabSetRepository = AppDataSource.getRepository(VocabularySet)
-    private vocabRepository = AppDataSource.getRepository(Vocabulary)
+    private vocabularySetRepository = AppDataSource.getRepository(VocabularySet);
 
-    // CONTROLLER WITH FLASH CARD DECK
-    async createVocabSets(deckData: Partial<VocabularySet>) {
-        const flashcardDeck = this.vocabSetRepository.create(deckData)
-        return this.vocabSetRepository.save(flashcardDeck)
-    }
+    private vocabularyRepository = AppDataSource.getRepository(Vocabulary);
 
-    async getAllVocabSets(userId: string) {
-        return await this.vocabSetRepository.find({
-            where: { userId }
-        })
-    }
-    async getVocabSetById(vocabsetsId: number) {
-        return await this.vocabSetRepository.findOne({
-            where: { id: vocabsetsId }
-        })
-    }
+    private progressRepository = AppDataSource.getRepository(UserVocabularyProgress);
 
-    async updateVocabSets(deckData: Partial<VocabularySet>, vocabsetsId: number) {
-        const deck = await this.vocabSetRepository.findOne({
-            where: { id: vocabsetsId }
+    private sessionRepository = AppDataSource.getRepository(VocabularyPracticeSession);
+
+    private practiceAnswerRepository = AppDataSource.getRepository(VocabularyPracticeAnswer);
+
+    private async findVocabularySetOrFail(
+        setId: number,
+        relations?: { vocabularies?: boolean }
+    ) {
+        const vocabularySet = await this.vocabularySetRepository.findOne({
+            where: {
+                id: setId,
+                user: {
+                    role: UserRole.ADMIN,
+                },
+            },
+            relations,
         });
-        if (!deck) {
-            return null;
+
+        if (!vocabularySet) {
+            throw new AppError("Vocabulary bộ không tồn tại", 404);
         }
-        // copy tu deckData vao deck
-        // gan tu phai qua trai
-        Object.assign(deck, deckData)
-        // sau khi copy xong cần phải luu
-        return await this.vocabSetRepository.save(deck)
+
+        return vocabularySet;
     }
 
-    async deleteVocabSets(vocabsetsId: number) {
-        return this.vocabSetRepository.delete(vocabsetsId)
+    private async findVocabularyOrFail(setId: number, vocabularyId: number) {
+        await this.findVocabularySetOrFail(setId);
+
+        const vocabulary = await this.vocabularyRepository.findOne({
+            where: {
+                id: vocabularyId,
+                vocabSetId: setId,
+            },
+        });
+
+        if (!vocabulary) {
+            throw new AppError("Vocabulary không tồn tại", 404);
+        }
+
+        return vocabulary;
     }
 
+    private normalizeAnswer(value: string) {
+        return value
+            .trim()
+            .toLowerCase()
+            .replace(/[|\n\r]+/g, " ")
+            .replace(/[.,!?;:"'()]/g, "")
+            .replace(/\s+/g, " ");
+    }
 
-    // CONTROLLER WITH FLASH CARD
+    private ensurePracticeMode(mode: string) {
+        if (!Object.values(VocabularyPracticeMode).includes(mode as VocabularyPracticeMode)) {
+            throw new AppError("Invalid vocabulary practice mode", 400);
+        }
 
-    async getAllVocab(vocabsetsId: number) {
-        return await this.vocabSetRepository.findOne({
-            where: { id: vocabsetsId },
+        return mode as VocabularyPracticeMode;
+    }
+
+    private ensureFlashcardResult(result: string) {
+        if (
+            result !== VocabularyPracticeResult.REMEMBERED &&
+            result !== VocabularyPracticeResult.FORGOT
+        ) {
+            throw new AppError("Invalid flashcard result", 400);
+        }
+
+        return result as VocabularyPracticeResult.REMEMBERED | VocabularyPracticeResult.FORGOT;
+    }
+
+    private async findUserSessionOrFail(sessionId: number, userId: string) {
+        const session = await this.sessionRepository.findOne({
+            where: { id: sessionId, userId },
+        });
+
+        if (!session) {
+            throw new AppError("Vocabulary practice session not found", 404);
+        }
+
+        return session;
+    }
+
+    private async findVocabularyForPracticeOrFail(vocabularyId: number) {
+        const vocabulary = await this.vocabularyRepository.findOne({
+            where: {
+                id: vocabularyId,
+                vocabularySet: {
+                    user: {
+                        role: UserRole.ADMIN,
+                    },
+                },
+            },
             relations: {
-                vocabularies: true
-            }
-        })
+                vocabularySet: {
+                    user: true,
+                },
+            },
+        });
+
+        if (!vocabulary) {
+            throw new AppError("Vocabulary không tồn tại", 404);
+        }
+
+        return vocabulary;
     }
 
-    async createVocabCard(vocabsetsId: number, flashcardData: Partial<Vocabulary>) {
-        const { word, meaning } = flashcardData;
-        const flashcard = this.vocabRepository.create({
-            vocabSetId: vocabsetsId, word, meaning
-        })
-        return this.vocabRepository.save(flashcard)
+    private getNextReviewDate(status: VocabularyProgressStatus) {
+        const nextReviewAt = new Date();
+
+        if (status === VocabularyProgressStatus.MASTERED) {
+            nextReviewAt.setDate(nextReviewAt.getDate() + 7);
+            return nextReviewAt;
+        }
+
+        nextReviewAt.setDate(nextReviewAt.getDate() + 1);
+        return nextReviewAt;
     }
 
-    async updateVocabCard(cardId: number, flashcardData: Partial<Vocabulary>) {
-        const flashcard = await this.vocabRepository.findOne({
-            where: { id: cardId }
-        })
+    private getProgressStatusFromResult(result: VocabularyPracticeResult) {
+        if (
+            result === VocabularyPracticeResult.REMEMBERED ||
+            result === VocabularyPracticeResult.CORRECT
+        ) {
+            return VocabularyProgressStatus.MASTERED;
+        }
 
-        Object.assign(flashcard, flashcardData)
-        return await this.vocabRepository.save(flashcard)
+        if (
+            result === VocabularyPracticeResult.FORGOT ||
+            result === VocabularyPracticeResult.WRONG
+        ) {
+            return VocabularyProgressStatus.REVIEW;
+        }
+
+        return VocabularyProgressStatus.LEARNING;
     }
 
-    async deleteVocabCard(cardId: number) {
-        return this.vocabRepository.delete(cardId)
+    private async updateVocabularyProgress(
+        userId: string,
+        vocabulary: Vocabulary,
+        result: VocabularyPracticeResult,
+        practicedAt: Date
+    ) {
+        let progress = await this.progressRepository.findOne({
+            where: { userId, vocabularyId: vocabulary.id },
+        });
+
+        if (!progress) {
+            progress = this.progressRepository.create({
+                userId,
+                vocabularyId: vocabulary.id,
+                vocabSetId: vocabulary.vocabSetId,
+                status: VocabularyProgressStatus.LEARNING,
+                flashcardSeenCount: 0,
+                flashcardRememberedCount: 0,
+                flashcardForgotCount: 0,
+                spellingCorrectCount: 0,
+                spellingWrongCount: 0,
+                lastPracticedAt: practicedAt,
+            });
+        }
+
+        progress.flashcardSeenCount = progress.flashcardSeenCount ?? 0;
+        progress.flashcardRememberedCount = progress.flashcardRememberedCount ?? 0;
+        progress.flashcardForgotCount = progress.flashcardForgotCount ?? 0;
+        progress.spellingCorrectCount = progress.spellingCorrectCount ?? 0;
+        progress.spellingWrongCount = progress.spellingWrongCount ?? 0;
+
+        if (
+            result === VocabularyPracticeResult.REMEMBERED ||
+            result === VocabularyPracticeResult.FORGOT
+        ) {
+            progress.flashcardSeenCount += 1;
+        }
+
+        if (result === VocabularyPracticeResult.REMEMBERED) {
+            progress.flashcardRememberedCount += 1;
+        }
+
+        if (result === VocabularyPracticeResult.FORGOT) {
+            progress.flashcardForgotCount += 1;
+        }
+
+        if (result === VocabularyPracticeResult.CORRECT) {
+            progress.spellingCorrectCount += 1;
+        }
+
+        if (result === VocabularyPracticeResult.WRONG) {
+            progress.spellingWrongCount += 1;
+        }
+
+        progress.status = this.getProgressStatusFromResult(result);
+        progress.lastPracticedAt = practicedAt;
+        progress.nextReviewAt = this.getNextReviewDate(progress.status);
+
+        return this.progressRepository.save(progress);
     }
 
-    async getVocabCardDetail(vocabsetsId: number, cardId: number) {
-        return await this.vocabRepository.findOne({
-            where: { id: cardId, vocabSetId: vocabsetsId }
-        })
+    /*
+        =========================
+        VOCABULARY SET
+        =========================
+    */
+
+    async createVocabularySet(userId: string, data: Partial<VocabularySet>) {
+        if (!data.name?.trim()) {
+            throw new AppError("Set name is required", 400);
+        }
+
+        const vocabularySet = this.vocabularySetRepository.create({
+            name: data.name.trim(),
+            tag: data.tag?.trim() || null,
+            userId,
+        });
+
+        return this.vocabularySetRepository.save(vocabularySet);
     }
 
+    async getAllVocabularySets() {
+        return this.vocabularySetRepository
+            .createQueryBuilder("vocabularySet")
+            .loadRelationCountAndMap(
+                "vocabularySet.vocabularyCount",
+                "vocabularySet.vocabularies"
+            )
+            .innerJoin("vocabularySet.user", "owner", "owner.role = :role", {
+                role: UserRole.ADMIN,
+            })
+            .orderBy("vocabularySet.createdAt", "DESC")
+            .getMany();
+    }
+
+    async getVocabularySetById(setId: number) {
+        return this.findVocabularySetOrFail(setId, {
+            vocabularies: true,
+        });
+    }
+
+    async updateVocabularySet(
+        setId: number,
+        data: Partial<VocabularySet>
+    ) {
+        const vocabularySet = await this.findVocabularySetOrFail(setId);
+
+        if (data.name !== undefined && !data.name.trim()) {
+            throw new AppError("Set name cannot be empty", 400);
+        }
+
+        Object.assign(vocabularySet, {
+            name: data.name?.trim() ?? vocabularySet.name,
+            tag: data.tag === undefined ? vocabularySet.tag : data.tag?.trim() || null,
+        });
+
+        return this.vocabularySetRepository.save(vocabularySet);
+    }
+
+    async deleteVocabularySet(setId: number) {
+        const vocabularySet = await this.findVocabularySetOrFail(setId);
+        await this.vocabularySetRepository.remove(vocabularySet);
+    }
+
+    /*
+        =========================
+        VOCABULARY
+        =========================
+    */
+
+    async getVocabulariesBySetId(setId: number) {
+        const vocabularySet = await this.findVocabularySetOrFail(setId, {
+            vocabularies: true,
+        });
+        return vocabularySet.vocabularies;
+    }
+
+    async getVocabularyPracticeItems(setId: number) {
+        const vocabularySet = await this.findVocabularySetOrFail(setId, {
+            vocabularies: true,
+        });
+
+        return vocabularySet.vocabularies.map((vocabulary) => ({
+            id: vocabulary.id,
+            prompt: vocabulary.meaning,
+            example: vocabulary.example,
+        }));
+    }
+
+    async checkVocabularyPracticeAnswer(
+        vocabularyId: number,
+        answerText: string
+    ) {
+        if (!answerText.trim()) {
+            throw new AppError("answerText is required", 400);
+        }
+
+        const vocabulary = await this.vocabularyRepository.findOne({
+            where: {
+                id: vocabularyId,
+                vocabularySet: {
+                    user: {
+                        role: UserRole.ADMIN,
+                    },
+                },
+            },
+            relations: {
+                vocabularySet: {
+                    user: true,
+                },
+            },
+        });
+
+        if (!vocabulary) {
+            throw new AppError("Vocabulary không tồn tại", 404);
+        }
+
+        const isCorrect =
+            this.normalizeAnswer(answerText) === this.normalizeAnswer(vocabulary.word);
+
+        return {
+            vocabularyId: vocabulary.id,
+            answerText,
+            isCorrect,
+            correctAnswer: vocabulary.word,
+            meaning: vocabulary.meaning,
+            example: vocabulary.example,
+        };
+    }
+
+    async startPracticeSession(
+        userId: string,
+        vocabSetId: number,
+        modeValue: string
+    ) {
+        await this.findVocabularySetOrFail(vocabSetId);
+
+        const mode = this.ensurePracticeMode(modeValue);
+
+        return this.sessionRepository.save(
+            this.sessionRepository.create({
+                userId,
+                vocabSetId,
+                mode,
+                startedAt: new Date(),
+            })
+        );
+    }
+
+    async recordFlashcardAnswer(
+        userId: string,
+        sessionId: number,
+        vocabularyId: number,
+        resultValue: string
+    ) {
+        const session = await this.findUserSessionOrFail(sessionId, userId);
+        if (session.mode !== VocabularyPracticeMode.FLASHCARD) {
+            throw new AppError("Session is not a flashcard session", 400);
+        }
+
+        const result = this.ensureFlashcardResult(resultValue);
+        const vocabulary = await this.findVocabularyForPracticeOrFail(vocabularyId);
+        if (vocabulary.vocabSetId !== session.vocabSetId) {
+            throw new AppError("Vocabulary does not belong to this session set", 400);
+        }
+
+        const existingAnswer = await this.practiceAnswerRepository.findOne({
+            where: {
+                sessionId,
+                userId,
+                vocabularyId,
+                mode: VocabularyPracticeMode.FLASHCARD,
+            },
+        });
+        if (existingAnswer) {
+            throw new AppError("This flashcard has already been answered in this session", 409);
+        }
+
+        const answeredAt = new Date();
+        const answer = await this.practiceAnswerRepository.save(
+            this.practiceAnswerRepository.create({
+                sessionId,
+                userId,
+                vocabularyId,
+                mode: VocabularyPracticeMode.FLASHCARD,
+                result,
+                answeredAt,
+            })
+        );
+
+        session.seenCount = session.seenCount ?? 0;
+        session.rememberedCount = session.rememberedCount ?? 0;
+        session.forgotCount = session.forgotCount ?? 0;
+        session.seenCount += 1;
+        if (result === VocabularyPracticeResult.REMEMBERED) {
+            session.rememberedCount += 1;
+        } else {
+            session.forgotCount += 1;
+        }
+        session.endedAt = answeredAt;
+        await this.sessionRepository.save(session);
+
+        const progress = await this.updateVocabularyProgress(
+            userId,
+            vocabulary,
+            result,
+            answeredAt
+        );
+
+        return {
+            answer,
+            session,
+            progress,
+        };
+    }
+
+    async submitSpellingAnswer(
+        userId: string,
+        sessionId: number,
+        vocabularyId: number,
+        answerText: string
+    ) {
+        if (!answerText.trim()) {
+            throw new AppError("answerText is required", 400);
+        }
+
+        const session = await this.findUserSessionOrFail(sessionId, userId);
+        if (session.mode !== VocabularyPracticeMode.SPELLING) {
+            throw new AppError("Session is not a spelling session", 400);
+        }
+
+        const vocabulary = await this.findVocabularyForPracticeOrFail(vocabularyId);
+        if (vocabulary.vocabSetId !== session.vocabSetId) {
+            throw new AppError("Vocabulary does not belong to this session set", 400);
+        }
+
+        const isCorrect =
+            this.normalizeAnswer(answerText) === this.normalizeAnswer(vocabulary.word);
+        const result = isCorrect
+            ? VocabularyPracticeResult.CORRECT
+            : VocabularyPracticeResult.WRONG;
+        const answeredAt = new Date();
+
+        const answer = await this.practiceAnswerRepository.save(
+            this.practiceAnswerRepository.create({
+                sessionId,
+                userId,
+                vocabularyId,
+                mode: VocabularyPracticeMode.SPELLING,
+                result,
+                answerText,
+                answeredAt,
+            })
+        );
+
+        session.correctCount = session.correctCount ?? 0;
+        session.wrongCount = session.wrongCount ?? 0;
+        if (isCorrect) {
+            session.correctCount += 1;
+        } else {
+            session.wrongCount += 1;
+        }
+        session.endedAt = answeredAt;
+        await this.sessionRepository.save(session);
+
+        const progress = await this.updateVocabularyProgress(
+            userId,
+            vocabulary,
+            result,
+            answeredAt
+        );
+
+        return {
+            answer,
+            session,
+            progress,
+            vocabularyId: vocabulary.id,
+            answerText,
+            isCorrect,
+            correctAnswer: vocabulary.word,
+            meaning: vocabulary.meaning,
+            example: vocabulary.example,
+        };
+    }
+
+    async createVocabulary(
+        setId: number,
+        data: Partial<Vocabulary>
+    ) {
+        await this.findVocabularySetOrFail(setId);
+
+        if (!data.word?.trim()) {
+            throw new AppError("Word is required", 400);
+        }
+
+        if (!data.meaning?.trim()) {
+            throw new AppError("Meaning is required", 400);
+        }
+
+        const vocabulary = this.vocabularyRepository.create({
+            vocabSetId: setId,
+            word: data.word.trim(),
+            meaning: data.meaning.trim(),
+            pronunciation: data.pronunciation?.trim() || null,
+            example: data.example?.trim() || null,
+        });
+
+        return this.vocabularyRepository.save(vocabulary);
+    }
+
+    async getVocabularyDetail(
+        setId: number,
+        vocabularyId: number
+    ) {
+        return this.findVocabularyOrFail(setId, vocabularyId);
+    }
+
+    async updateVocabulary(
+        setId: number,
+        vocabularyId: number,
+        data: Partial<Vocabulary>
+    ) {
+        const vocabulary = await this.findVocabularyOrFail(setId, vocabularyId);
+
+        if (data.word !== undefined && !data.word.trim()) {
+            throw new AppError("Word cannot be empty", 400);
+        }
+
+        if (data.meaning !== undefined && !data.meaning.trim()) {
+            throw new AppError("Meaning cannot be empty", 400);
+        }
+
+        Object.assign(vocabulary, {
+            word: data.word?.trim() ?? vocabulary.word,
+            meaning: data.meaning?.trim() ?? vocabulary.meaning,
+            pronunciation:
+                data.pronunciation === undefined
+                    ? vocabulary.pronunciation
+                    : data.pronunciation?.trim() || null,
+            example: data.example === undefined ? vocabulary.example : data.example?.trim() || null,
+        });
+
+        return this.vocabularyRepository.save(vocabulary);
+    }
+
+    async deleteVocabulary(
+        setId: number,
+        vocabularyId: number
+    ) {
+        const vocabulary = await this.findVocabularyOrFail(setId, vocabularyId);
+        await this.vocabularyRepository.remove(vocabulary);
+    }
 }

@@ -16,8 +16,8 @@ export enum AnswerResult {
 @Entity('attempt_answers')
 @Unique(['attemptId', 'questionId'])
 export class AttemptAnswer {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column()
   attemptId: number;
@@ -47,9 +47,12 @@ export class AttemptAnswer {
   @Column({ type: 'timestamp', nullable: true })
   answeredAt: Date | null;
 
-  @Column({ nullable: true })
-  correctOptionId: number;
-  
+  // @Column({ nullable: true })
+  // correctOptionId: number;
+
+  @Column({ type: 'text', nullable: true })
+  answerText: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

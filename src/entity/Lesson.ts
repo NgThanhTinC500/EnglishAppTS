@@ -1,11 +1,12 @@
 import {
     Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn,
-    CreateDateColumn, UpdateDateColumn,
+    CreateDateColumn, UpdateDateColumn, OneToMany,
 } from 'typeorm';
 import { Course } from './Courses';
+import { Lecture } from './Lectures';
 
-@Entity('sections')
-export class Section {
+@Entity('lessons')
+export class Lesson {
     @PrimaryGeneratedColumn()
     id: number;
 
@@ -18,6 +19,9 @@ export class Section {
 
     @Column()
     title: string;
+
+    @OneToMany(() => Lecture, (lecture) => lecture.lesson)
+    lectures: Lecture[];
 
     @CreateDateColumn()
     createdAt: Date;

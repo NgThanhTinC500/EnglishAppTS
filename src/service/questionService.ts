@@ -1,23 +1,136 @@
-import { In, Repository } from "typeorm";
 import { AppDataSource } from "../data-source";
-import { Question } from "../entity/Question";
+import { Question, QuestionCategory, QuestionType } from "../entity/Question";
 import { QuestionOption } from "../entity/QuestionOption";
 
-import { Topic } from "../entity/Topic";
 import { Exam } from "../entity/Exam";
 import { ExamQuestion } from "../entity/ExamQuestion";
+import { AppError } from "../utils/appError";
 
 export class QuestionService {
     private questionRepository = AppDataSource.getRepository(Question);
-    private optionRepository = AppDataSource.getRepository(QuestionOption);
-    private topicRepository = AppDataSource.getRepository(Topic);
     private examRepository = AppDataSource.getRepository(Exam);
     private examQuestionRepository = AppDataSource.getRepository(ExamQuestion);
 
-    async createQuestion(data: {
+    private ensurePositiveInteger(value: number, fieldName: string) {
+        if (!Number.isInteger(value) || value <= 0) {
+            throw new AppError(`${fieldName} must be a positive integer`, 400);
+        }
+    }
+
+    private escapeRegExp(value: string) {
+        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    // convert "A,B,C" => ["A", "B", "C"]
+    private splitDictationAnswers(value: string | null | undefined) {
+        return (value ?? "")
+            .split(",")
+            .map(answer => answer.trim())
+            .filter(Boolean);
+    }
+
+    // Normalize dictation answers before comparing them.
+    private normalizeDictationAnswer(value: string) {
+        return value
+            .trim()
+            .toLowerCase()
+            .replace(/[|\n\r]+/g, " ")
+            .replace(/[.,!?;:"'()]/g, "")
+            .replace(/\s+/g, " ");
+    }
+
+    // mask transcript by replacing correct answers with [BLANK]
+    // transcript:     "The quick brown fox"
+    // correctAnswers: ["quick", "brown"]
+    // result:         "The [BLANK] [BLANK] fox"
+    private maskTranscript(transcript: string | null, correctAnswers: string[]) {
+        if (!transcript) return transcript;
+        if (transcript.includes("[BLANK]")) return transcript;
+
+        return correctAnswers.reduce((maskedTranscript, answer) => {
+            if (!answer) return maskedTranscript;
+            const escapedAnswer = this.escapeRegExp(answer);
+            const pattern = new RegExp(`(^|[\\s.,!?;:"'()])(${escapedAnswer})(?=$|[\\s.,!?;:"'()])`, "i");
+
+            return maskedTranscript.replace(pattern, (_match, prefix) => `${prefix}[BLANK]`);
+        }, transcript);
+    }
+
+    private validateQuestionType(value: QuestionType) {
+        if (!Object.values(QuestionType).includes(value)) {
+            throw new AppError("Invalid question type", 400);
+        }
+    }
+
+    private validateQuestionCategory(value: QuestionCategory) {
+        if (!Object.values(QuestionCategory).includes(value)) {
+            throw new AppError("Invalid question category", 400);
+        }
+    }
+
+    private validateSingleChoiceOptions(options: {
+        label: string;
         content: string;
-        explanation?: string;
-        options: {
+        isCorrect: boolean;
+    }[]) {
+        if (!Array.isArray(options) || options.length < 2) {
+            throw new AppError("At least 2 options required", 400);
+        }
+
+        const hasInvalidOption = options.some(
+            (option) => !option.label?.trim() || !option.content?.trim()
+        );
+        if (hasInvalidOption) {
+            throw new AppError("Option label and content are required", 400);
+        }
+
+        const correctCount = options.filter((option) => option.isCorrect).length;
+        if (correctCount !== 1) {
+            throw new AppError("Must have exactly 1 correct answer", 400);
+        }
+    }
+
+
+    // convert Question entity to a safe object for API response 
+    // by removing correct answer and other sensitive info
+    private toSafeQuestion(question: Question | null) {
+        if (!question) return question;
+
+        const correctAnswers = this.splitDictationAnswers(question.dictationAnswer);
+        return {
+            id: question.id,
+            category: question.category,
+            type: question.type,
+            content: question.content,
+            explanation: question.explanation,
+            audioUrl: question.audioUrl,
+            audioFileName: question.audioFileName,
+            transcript: question.showTranscript
+                ? question.transcript
+                : this.maskTranscript(question.transcript, correctAnswers),
+            showTranscript: question.showTranscript,
+            options: question.options?.map(option => ({
+                id: option.id,
+                questionId: option.questionId,
+                label: option.label,
+                content: option.content
+            })) ?? [],
+            createdAt: question.createdAt,
+            updatedAt: question.updatedAt
+        };
+    }
+
+    async createQuestion(data: {
+        type?: QuestionType;
+        category?: QuestionCategory;
+        content?: string | null;
+        explanation?: string | null;
+        audioUrl?: string | null;
+        audioFileName?: string | null;
+        transcript?: string | null;
+        showTranscript?: boolean;
+        dictationAnswer?: string | null;
+        options?: {
             label: string;
             content: string;
             isCorrect: boolean;
@@ -27,87 +140,283 @@ export class QuestionService {
         return AppDataSource.transaction(async (manager) => {
             const questionRepo = manager.getRepository(Question);
             const optionRepo = manager.getRepository(QuestionOption);
-
-            // const topicRepo = manager.getRepository(Topic);
             const examRepo = manager.getRepository(Exam);
             const examQuestionRepo = manager.getRepository(ExamQuestion);
+            const questionType = data.type ?? QuestionType.SINGLE_CHOICE;
+            const questionCategory = data.category ?? QuestionCategory.GRAMMAR;
+            this.validateQuestionType(questionType);
+            this.validateQuestionCategory(questionCategory);
 
             // ===== VALIDATE =====
-            if (!data.content || data.content.trim() === "") {
-                throw new Error("Question content is required");
+            if (questionType === QuestionType.SINGLE_CHOICE) {
+                if (!data.content || data.content.trim() === "") {
+                    throw new AppError("Question content is required", 400);
+                }
+                this.validateSingleChoiceOptions(data.options ?? []);
             }
 
-            if (!data.options || data.options.length < 2) {
-                throw new Error("At least 2 options required");
-            }
-
-            const correctCount = data.options.filter(o => o.isCorrect).length;
-            if (correctCount !== 1) {
-                throw new Error("Must have exactly 1 correct answer");
+            if (questionType === QuestionType.DICTATION) {
+                if (!data.dictationAnswer?.trim()) {
+                    throw new AppError("Dictation answer is required", 400);
+                }
+                if (!data.audioUrl) {
+                    throw new AppError("Audio is required for dictation", 400);
+                }
+                if (!data.transcript?.trim()) {
+                    throw new AppError("Transcript is required for dictation", 400);
+                }
             }
 
             // ===== CREATE QUESTION =====
             const question = questionRepo.create({
-                content: data.content.trim(),
-                explanation: data.explanation || null,
+                type: questionType,
+                category: questionCategory,
+                content: questionType === QuestionType.DICTATION
+                    ? data.transcript?.trim() ?? null
+                    : data.content?.trim() ?? null,
+                explanation: data.explanation ?? null,
+                audioUrl: data.audioUrl ?? null,
+                audioFileName: data.audioFileName ?? null,
+                transcript: data.transcript ?? null,
+                showTranscript: data.showTranscript ?? false,
+                dictationAnswer: data.dictationAnswer?.trim() ?? null,
             });
 
             const savedQuestion = await questionRepo.save(question);
 
             // ===== CREATE OPTIONS =====
-            const options = data.options.map(opt =>
-                optionRepo.create({
-                    questionId: savedQuestion.id,
-                    label: opt.label.toUpperCase(),
-                    content: opt.content,
-                    isCorrect: opt.isCorrect,
-                })
-            );
-
-            await optionRepo.save(options);
+            if (questionType === QuestionType.SINGLE_CHOICE && data.options) {
+                const options = data.options.map(opt =>
+                    optionRepo.create({
+                        questionId: savedQuestion.id,
+                        label: opt.label.trim().toUpperCase(),
+                        content: opt.content.trim(),
+                        isCorrect: opt.isCorrect,
+                    })
+                );
+                await optionRepo.save(options);
+            }
 
             // ===== ADD TO EXAM (optional) =====
-            if (data.examId) {
-                const exam = await examRepo.findOne({
-                    where: { id: data.examId }
-                });
-
-                if (!exam) {
-                    throw new Error("Exam not found");
-                }
+            if (data.examId !== undefined) {
+                const examId = Number(data.examId);
+                this.ensurePositiveInteger(examId, "examId");
+                const exam = await examRepo.findOne({ where: { id: examId } });
+                if (!exam) throw new AppError("Exam not found", 404);
 
                 const last = await examQuestionRepo.findOne({
-                    where: { examId: data.examId },
+                    where: { examId },
                     order: { orderIndex: "DESC" }
                 });
 
-                const orderIndex = last ? last.orderIndex + 1 : 1;
-
-                const examQuestion = examQuestionRepo.create({
-                    examId: data.examId,
+                await examQuestionRepo.save(examQuestionRepo.create({
+                    examId,
                     questionId: savedQuestion.id,
-                    orderIndex
-                });
-
-                await examQuestionRepo.save(examQuestion);
+                    orderIndex: last ? last.orderIndex + 1 : 1
+                }));
             }
 
-            return {
-                id: savedQuestion.id,
-                content: savedQuestion.content,
-                explanation: savedQuestion.explanation
-            };
+            const createdQuestion = await questionRepo.findOne({
+                where: { id: savedQuestion.id },
+                relations: { options: true }
+            });
+
+            return this.toSafeQuestion(createdQuestion);
         });
     }
     async getAllQuestion() {
-        const result = await this.questionRepository.find();
-        return result;
+        const result = await this.questionRepository.find({
+            relations: {
+                options: true
+            }
+        });
+        return result.map(question => this.toSafeQuestion(question));
     }
 
     async getQuestionDetail(questionId: number) {
         const result = await this.questionRepository.findOne({
-            where: { id: questionId }
+            where: { id: questionId },
+            relations: {
+                options: true
+            }
         })
-        return result;
+        if (!result) {
+            throw new AppError("Question not found", 404);
+        }
+        return this.toSafeQuestion(result);
+    }
+
+    async getDictationQuestion(questionId: number) {
+        const question = await this.questionRepository.findOne({
+            where: { id: questionId },
+            relations: {
+                options: true
+            }
+        });
+
+        if (!question || question.type !== QuestionType.DICTATION) {
+            throw new AppError("Dictation question not found", 404);
+        }
+
+        return this.toSafeQuestion(question);
+    }
+
+    async submitDictationAnswer(questionId: number, answers: string[]) {
+        if (!Array.isArray(answers)) {
+            throw new AppError("answers must be an array", 400);
+        }
+
+        const question = await this.questionRepository.findOne({
+            where: { id: questionId }
+        });
+
+        if (!question || question.type !== QuestionType.DICTATION) {
+            throw new AppError("Dictation question not found", 404);
+        }
+
+        const correctAnswers = this.splitDictationAnswers(question.dictationAnswer);
+        if (correctAnswers.length === 0) {
+            throw new AppError("Dictation answer is not configured", 400);
+        }
+
+        const normalizedUserAnswers = answers.map(answer =>
+            this.normalizeDictationAnswer(String(answer ?? ""))
+        );
+        const normalizedCorrectAnswers = correctAnswers.map(answer =>
+            this.normalizeDictationAnswer(answer)
+        );
+        const isCorrect = normalizedUserAnswers.length === normalizedCorrectAnswers.length
+            && normalizedCorrectAnswers.every((answer, index) => normalizedUserAnswers[index] === answer);
+
+        return {
+            isCorrect,
+            correctAnswers,
+            transcript: question.transcript
+        };
+    }
+
+    async updateQuestion(
+        questionId: number,
+        data: {
+            type?: QuestionType;
+            category?: QuestionCategory;
+            content?: string;
+            explanation?: string;
+            audioUrl?: string | null;
+            audioFileName?: string | null;
+            audioDuration?: number | null;
+            transcript?: string | null;
+            showTranscript?: boolean;
+            dictationAnswer?: string | null;
+            options?: {
+                label: string;
+                content: string;
+                isCorrect: boolean;
+            }[];
+        }
+    ) {
+        return AppDataSource.transaction(async (manager) => {
+            const questionRepo = manager.getRepository(Question);
+            const optionRepo = manager.getRepository(QuestionOption);
+
+            const question = await questionRepo.findOne({
+                where: { id: questionId },
+                relations: {
+                    options: true
+                }
+            });
+
+            if (!question) {
+                throw new AppError("Question not found", 404);
+            }
+
+            const nextType = data.type ?? question.type;
+            const nextCategory = data.category ?? question.category;
+            this.validateQuestionType(nextType);
+            this.validateQuestionCategory(nextCategory);
+            const nextContent = nextType === QuestionType.DICTATION
+                ? data.transcript ?? question.transcript ?? data.content ?? question.content
+                : data.content ?? question.content;
+            const nextOptions = data.options ?? question.options ?? [];
+
+            if (nextType === QuestionType.SINGLE_CHOICE && (!nextContent || nextContent.trim() === "")) {
+                throw new AppError("Question content is required", 400);
+            }
+
+            if (nextType === QuestionType.SINGLE_CHOICE) {
+                this.validateSingleChoiceOptions(nextOptions);
+            }
+
+            if (nextType === QuestionType.DICTATION) {
+                const nextDictationAnswer = data.dictationAnswer ?? question.dictationAnswer;
+                const nextTranscript = data.transcript ?? question.transcript;
+                const nextAudioUrl = data.audioUrl === undefined ? question.audioUrl : data.audioUrl;
+                if (!nextDictationAnswer?.trim()) {
+                    throw new AppError("Dictation answer is required", 400);
+                }
+                if (!nextTranscript?.trim()) {
+                    throw new AppError("Transcript is required for dictation", 400);
+                }
+                if (!nextAudioUrl) {
+                    throw new AppError("Audio is required for dictation", 400);
+                }
+            }
+
+            question.type = nextType;
+            question.category = nextCategory;
+            question.content = nextType === QuestionType.DICTATION
+                ? (data.transcript ?? nextContent)?.trim() ?? null
+                : nextContent?.trim() ?? null;
+            question.explanation = data.explanation ?? question.explanation;
+            question.audioUrl = data.audioUrl === undefined ? question.audioUrl : data.audioUrl;
+            question.audioFileName =
+                data.audioFileName === undefined ? question.audioFileName : data.audioFileName;
+            question.transcript = data.transcript === undefined ? question.transcript : data.transcript;
+            question.showTranscript = data.showTranscript ?? question.showTranscript;
+            question.dictationAnswer =
+                nextType === QuestionType.DICTATION
+                    ? (data.dictationAnswer ?? question.dictationAnswer)?.trim() ?? null
+                    : null;
+
+            const savedQuestion = await questionRepo.save(question);
+
+            if (nextType === QuestionType.SINGLE_CHOICE) {
+                if (data.options) {
+                    await optionRepo.delete({ questionId });
+                    const options = data.options.map((option) =>
+                        optionRepo.create({
+                            questionId,
+                            label: option.label.trim().toUpperCase(),
+                            content: option.content.trim(),
+                            isCorrect: option.isCorrect,
+                        })
+                    );
+                    await optionRepo.save(options);
+                }
+            } else {
+                await optionRepo.delete({ questionId });
+            }
+
+            const updatedQuestion = await questionRepo.findOne({
+                where: { id: savedQuestion.id },
+                relations: {
+                    options: true
+                }
+            });
+
+            return this.toSafeQuestion(updatedQuestion);
+        });
+    }
+
+    async deleteQuestion(questionId: number) {
+        const question = await this.questionRepository.findOne({
+            where: { id: questionId }
+        });
+
+        if (!question) {
+            throw new AppError("Question not found", 404);
+        }
+
+        await this.questionRepository.delete(questionId);
     }
 }

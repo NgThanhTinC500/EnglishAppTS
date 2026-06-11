@@ -1,12 +1,4 @@
 import {
-    IsNotEmpty,
-    IsString,
-    MaxLength,
-    IsOptional,
-    IsBoolean,
-} from "class-validator";
-
-import {
     Entity,
     PrimaryGeneratedColumn,
     Column,
@@ -24,44 +16,40 @@ export class Blog {
     @PrimaryGeneratedColumn()
     id: number;
 
-    // ===== Tag =====
     @Column({ length: 255 })
-    @IsNotEmpty({ message: "Tag is required" })
-    @IsString()
-    @MaxLength(255)
     tag: string;
 
-    // ===== Title =====
+    @Column({ length: 80, default: "meo-lam-bai" })
+    category: string;
+
+    @Column({ length: 255, nullable: true, unique: true })
+    slug?: string;
+
     @Column({ length: 255 })
-    @IsNotEmpty({ message: "Title is required" })
-    @IsString()
-    @MaxLength(255)
     title: string;
 
-    // ===== Content =====
+    @Column({ length: 500, nullable: true })
+    excerpt?: string;
+
     @Column("text")
-    @IsNotEmpty({ message: "Content is required" })
-    @IsString()
     content: string;
 
-    // ===== Image =====
     @Column({ length: 500, nullable: true })
-    @IsOptional()
-    @IsString()
-    @MaxLength(500)
     image?: string;
 
-    // ===== Publish status =====
+    @Column({ length: 500, nullable: true })
+    coverImage?: string;
+
+    @Column({ default: 5 })
+    readingTimeMinutes: number;
+
     @Column({ default: true })
-    @IsBoolean()
     isPublished: boolean;
 
-    // ===== Author relation =====
     @ManyToOne(() => User, user => user.blogs, { nullable: false })
     @JoinColumn({ name: "authorId" })
     author: User;
 
-    // ===== Timestamps =====
     @CreateDateColumn()
     createdAt: Date;
 

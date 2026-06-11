@@ -1,183 +1,242 @@
 import * as jwt from "jsonwebtoken";
-import * as crypto from "crypto";
+import type { SignOptions } from "jsonwebtoken";
 import { MoreThan } from "typeorm";
 import { User } from "../entity/User";
 import { UserService } from "./userService";
+import { PasswordService } from "./passwordService";
 import sendEmail from "../utils/email";
 import { AppError } from "../utils/appError";
 import { JwtPayload } from "../interface/jwtPayload.interface";
 import { Request } from "express";
 
 export class AuthService {
-  constructor(private readonly userService: UserService) { }
+    private readonly passwordService = new PasswordService();
 
-  signToken(userId: string): string {
-    return jwt.sign({ id: userId }, process.env.JWT_SECRET as string, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
-    });
-  }
+    constructor(private readonly userService: UserService) { }
 
-  // SIGNUP
-  async signup(data: {
-    name: string;
-    email: string;
-    password: string;
-    passwordConfirm: string;
-  }): Promise<User> {
-    const existingUser = await this.userService.findByEmail(data.email);
-    if (existingUser) {
-      throw new AppError("Email already in use", 400);
-    }
-    const newUser = await this.userService.createUser(data);
-    return newUser;
-  }
+    signToken(userId: string): string {
+        const jwtSecret = process.env.JWT_SECRET;
+        const jwtExpiresIn = (process.env.JWT_EXPIRES_IN ?? "7d") as SignOptions["expiresIn"];
 
-  // LOGIN
-  async login(
-    email: string,
-    password: string
-  ): Promise<User> {
-    if (!email || !password) {
-      throw new AppError("Please provide email and password", 400);
-    }
-    const user = await this.userService.findByEmail(email);
-    console.log("check: ", user)
-    if (!user || !(await user.correctPassword(password, user.password))) {
-      throw new AppError("Incorrect email or password", 401);
-    }
-    return user;
-  }
+        if (!jwtSecret) {
+            throw new AppError("JWT secret is not configured", 500);
+        }
 
-  // PROTECT — trả về user nếu hợp lệ, throw nếu không
-  async protect(req: Request): Promise<User> {
-    let token: string | undefined;
-
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    } else if (req.cookies?.jwt) {
-      token = req.cookies.jwt;
+        return jwt.sign(
+            { id: userId },
+            jwtSecret,
+            {
+                expiresIn: jwtExpiresIn,
+            }
+        );
     }
 
-    if (!token) {
-      throw new AppError("You are not logged in, please login to get access", 401);
+    async signup(data: {
+        name: string;
+        email: string;
+        password: string;
+        passwordConfirm: string;
+    }): Promise<User> {
+        const existingUser = await this.userService.findByEmail(data.email);
+
+        if (existingUser) {
+            throw new AppError("Email đã được sử dụng", 400);
+        }
+
+        const hashedPassword = await this.passwordService.hashPassword(data.password);
+
+        return this.userService.createUser({
+            name: data.name,
+            email: data.email,
+            password: hashedPassword,
+        });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    ) as JwtPayload;
-    console.log(decoded)
-    const currentUser = await this.userService.findOne(decoded.id);
-    if (!currentUser) {
-      throw new AppError("The user belonging to this token does not exist", 401);
+    async login(email: string, password: string): Promise<User> {
+        if (!email || !password) {
+            throw new AppError("Vui lòng cung cấp email và mật khẩu", 400);
+        }
+
+        const user = await this.userService.findByEmail(email);
+
+        if (!user || !user.isActive) {
+            // 401 unauthorized
+            throw new AppError("Sai email hoặc mật khẩu", 401);
+        }
+
+        const isPasswordCorrect = await this.passwordService.comparePassword(
+            password,
+            user.password
+        );
+
+        if (!isPasswordCorrect) {
+            throw new AppError("Sai email hoặc mật khẩu", 401);
+        }
+
+        return user;
     }
 
-    if (currentUser.changedPasswordAfter(decoded.iat)) {
-      throw new AppError("User recently changed password! Please log in again", 401);
+    async protect(req: Request): Promise<User> {
+        let token: string | undefined;
+
+        if (
+            req.headers.authorization &&
+            req.headers.authorization.startsWith("Bearer ")
+        ) {
+            token = req.headers.authorization.split(" ")[1];
+        } else if (req.cookies?.jwt) {
+            token = req.cookies.jwt;
+        }
+
+        if (!token) {
+            throw new AppError("Vui lòng đăng nhập để truy cập", 401);
+        }
+
+        const jwtSecret = process.env.JWT_SECRET;
+
+        if (!jwtSecret) {
+            throw new AppError("JWT secret is not configured", 500);
+        }
+
+        let decoded: JwtPayload;
+
+        try {
+            // verify token and get payload
+            decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+        } catch {
+            throw new AppError("Vui lòng đăng nhập để truy cập", 401);
+        }
+
+        const currentUser = await this.userService.findOne(decoded.id);
+
+        if (!currentUser || !currentUser.isActive) {
+            throw new AppError("The user belonging to this token does not exist", 401);
+        }
+
+        // compare  password change time && token issue time
+        if (
+            this.passwordService.changedPasswordAfter(
+                currentUser.passwordChangedAt,
+                decoded.iat
+            )
+        ) {
+            throw new AppError("Đã thay đổi mật khẩu gần đây! Vui lòng đăng nhập lại", 401);
+        }
+
+        return currentUser;
     }
 
-    return currentUser;
-  }
-
-  // RESTRICT TO
-  checkRole(userRole: string, roles: string[]): void {
-    if (!roles.includes(userRole)) {
-      throw new AppError("You do not have permission to perform this action", 403);
-    }
-  }
-
-  // UPDATE PASSWORD
-  async updatePassword(
-    userId: string,
-    currentPassword: string,
-    newPassword: string,
-    passwordConfirm: string
-  ): Promise<User> {
-    const user = await this.userService.findOneWithPassword(userId);
-    if (!(await user.correctPassword(currentPassword, user.password))) {
-      throw new AppError("Your current password is wrong", 401);
+    checkRole(userRole: string, roles: string[]): void {
+        if (!roles.includes(userRole)) {
+            throw new AppError("Bạn không có quyền thực hiện hành động này", 403);
+        }
     }
 
-    // check confirm password
-    if (newPassword !== passwordConfirm) {
-      throw new AppError("Passwords do not match", 400);
+    async updatePassword(
+        userId: string,
+        currentPassword: string,
+        newPassword: string,
+        passwordConfirm: string
+    ): Promise<User> {
+        const user = await this.userService.findOneWithPassword(userId);
+
+        if (!user) {
+            throw new AppError("Người dùng không tồn tại", 404);
+        }
+
+        const isCurrentPasswordCorrect = await this.passwordService.comparePassword(
+            currentPassword,
+            user.password
+        );
+
+        if (!isCurrentPasswordCorrect) {
+            throw new AppError("Mật khẩu hiện tại của bạn sai", 401);
+        }
+
+        if (newPassword !== passwordConfirm) {
+            throw new AppError("Mật khẩu không khớp", 400);
+        }
+
+        user.password = await this.passwordService.hashPassword(newPassword);
+        user.passwordChangedAt = new Date(Date.now() - 1000);
+
+        await this.userService.save(user);
+
+        const updatedUser = await this.userService.findOne(userId);
+        return updatedUser;
     }
 
-    user.password = newPassword;
-    user.passwordConfirm = passwordConfirm;
-    await this.userService.save(user);
-    // await this.userService.updateUser(user.id, {
-    //   password: newPassword,
-    //   passwordConfirm,
-    // });
+    async forgotPassword(
+        email: string,
+        clientUrl: string
+    ): Promise<void> {
+        const user = await this.userService.findByEmail(email);
 
-    // Trả về user mới nhất để controller tạo token
-    const updatedUser = await this.userService.findOne(userId);
-    return updatedUser;
-  }
+        if (!user) return;
 
-  // FORGOT PASSWORD
-  async forgotPassword(email: string, protocol: string, host: string): Promise<void> {
-    const user = await this.userService.findByEmail(email);
-    if (!user) {
-      throw new AppError("There is no user with that email address", 404);
+        const { rawToken, hashedToken, expiresAt } =
+            this.passwordService.createPasswordResetToken();
+
+        user.passwordResetToken = hashedToken;
+        user.passwordResetExpires = expiresAt;
+
+        await this.userService.saveResetToken(user);
+
+        const normalizedClientUrl = clientUrl.replace(/\/$/, "");
+        const resetURL = `${normalizedClientUrl}/reset-password/${rawToken}`;
+
+        try {
+            await sendEmail({
+                email: user.email,
+                subject: "Đặt lại mật khẩu TT English",
+                message: `Bạn vừa yêu cầu đặt lại mật khẩu TT English.\n\nVui lòng bấm vào liên kết sau để tạo mật khẩu mới. Liên kết có hiệu lực trong 10 phút:\n${resetURL}\n\n nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.`,
+            });
+        } catch {
+            user.passwordResetToken = null;
+            user.passwordResetExpires = null;
+            await this.userService.saveResetToken(user);
+            throw new AppError("Could not send password reset email", 500);
+        }
     }
 
-    const resetToken = user.createPasswordResetToken();
-    await this.userService.saveResetToken(user);
+    async resetPassword(
+        rawToken: string,
+        password: string,
+        passwordConfirm: string
+    ): Promise<User> {
+        const hashedToken = this.passwordService.hashResetToken(rawToken);
 
-    const resetURL = `${protocol}://${host}/reset-password/${resetToken}`;
+        const user = await this.userService.findOneBy({
+            passwordResetToken: hashedToken,
+            // check time token expires
+            passwordResetExpires: MoreThan(new Date()),
+        });
 
-    try {
-      await sendEmail({
-        email: user.email,
-        subject: "Your password reset token (valid for 10 min)",
-        message: `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`,
-      });
-    } catch (err) {
-      user.passwordResetToken = undefined;
-      user.passwordResetExpires = undefined;
-      await this.userService.saveResetToken(user);
-      throw new AppError("There was an error sending the email. Try again later!", 500);
-    }
-  }
+        if (!user) {
+            throw new AppError("Token is invalid or has expired", 400);
+        }
 
-  // RESET PASSWORD
-  async resetPassword(
-    rawToken: string,
-    password: string,
-    passwordConfirm: string
-  ): Promise<User> {
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(rawToken)
-      .digest("hex");
+        if (password !== passwordConfirm) {
+            throw new AppError("Mật khẩu không khớp", 400);
+        }
 
-    const user = await this.userService.findByCondition({
-      passwordResetToken: hashedToken,
-      passwordResetExpires: MoreThan(new Date()),
-    });
+        user.password = await this.passwordService.hashPassword(password);
+        user.passwordChangedAt = new Date(Date.now() - 1000);
+        user.passwordResetToken = null;
+        user.passwordResetExpires = null;
 
-    if (!user) {
-      throw new AppError("Token is invalid or has expired", 400);
+        await this.userService.save(user);
+
+
+        return user;
     }
 
-    user.password = password;
-    user.passwordConfirm = passwordConfirm;
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
+    async getme(userId: string): Promise<User> {
+        const user = await this.userService.findOne(userId);
+        if (!user) {
+            throw new AppError("Người dùng không tồn tại", 404);
+        }
 
-    await this.userService.save(user);
-    return user;
-  }
-  async getme(userId: string): Promise<User> {
-    const user = await this.userService.findOne(userId);
-    if (!user) {
-      throw new AppError("User not found", 404);
+        return user;
     }
-    return user;
-  }
 }

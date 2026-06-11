@@ -1,48 +1,46 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm";
-import { VocabularySet } from "./VocabularySet";
-// import { UserFlashcardProgress } from "./UserFlashcardProgress";
-
 import {
-    IsNotEmpty,
-    IsInt,
-    Min,
-    MaxLength
-} from "class-validator";
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from "typeorm";
+
+import { VocabularySet } from "./VocabularySet";
 
 @Entity("vocabulary")
 export class Vocabulary {
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id!: number;
 
-    @Column({ type: "varchar", length: 255 })
-    @IsNotEmpty({ message: "word text is required" })
-    @MaxLength(255, { message: "word text too long" })
-    word: string;
+  @Column({ type: "varchar", length: 255 })
+  word!: string;
 
-    @Column({ type: "text" })
-    @IsNotEmpty({ message: "meaning text is required" })
-    meaning: string;
+  @Column({ type: "text" })
+  meaning!: string;
 
-    @Column({ nullable: true })
-    pronunciation: string;
+  @Column({ nullable: true })
+  pronunciation!: string | null;
 
-    @Column({ nullable: true })
-    example: string;
+  @Column({ nullable: true })
+  example!: string | null;
 
-    @Column()
-    vocabSetId: number
+  @Column()
+  vocabSetId!: number;
 
-    @ManyToOne(
-        () => VocabularySet,
-        vocabSet => vocabSet.vocabularies,
-        { onDelete: "CASCADE" }
-    )
-    @JoinColumn({ name: "vocabSetId" })
-    vocabSet: VocabularySet;
+  @ManyToOne(
+    () => VocabularySet,
+    (vocabularySet) => vocabularySet.vocabularies,
+    { onDelete: "CASCADE" }
+  )
+  @JoinColumn({ name: "vocabSetId" })
+  vocabularySet!: VocabularySet;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @CreateDateColumn()
+  createdAt!: Date;
 
-    @UpdateDateColumn()
-    updatedAt: Date;
+  @UpdateDateColumn()
+  updatedAt!: Date;
 }

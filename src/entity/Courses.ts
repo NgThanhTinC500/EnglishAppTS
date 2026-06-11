@@ -1,7 +1,9 @@
+import { IsOptional } from 'class-validator';
 import {
     Entity, PrimaryGeneratedColumn, Column,
-    CreateDateColumn, UpdateDateColumn
+    CreateDateColumn, UpdateDateColumn, OneToMany
 } from 'typeorm';
+import { Lesson } from './Lesson';
 
 @Entity('courses')
 export class Course {
@@ -14,8 +16,12 @@ export class Course {
     @Column()
     description: string;
 
+    @IsOptional()
     @Column()
     thumbnailUrl: string;
+
+    @OneToMany(() => Lesson, (lesson) => lesson.course)
+    lessons: Lesson[];
 
     @CreateDateColumn()
     createdAt: Date;

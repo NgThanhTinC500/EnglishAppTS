@@ -3,6 +3,7 @@ import { UserService } from "../service/userService";
 import { AuthService } from "../service/authService";
 import { User } from "../entity/User";
 import catchAsync from "../utils/catchAsync";
+import { getJwtCookieOptions } from "../utils/httpConfig";
 
 export class AuthController {
   private authService: AuthService;
@@ -15,21 +16,17 @@ export class AuthController {
   // Tạo và gửi token về client — thuộc Controller vì dùng res
   private createSendToken(user: User, statusCode: number, res: Response) {
     const token = this.authService.signToken(user.id);
-    const cookieOptions = {
-      expires: new Date(
-        Date.now() +
-        Number(process.env.JWT_COOKIE_EXPIRES_IN) * 24 * 60 * 60 * 1000
-      ),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-    };
+    const cookieExpiresIn = Number(process.env.JWT_COOKIE_EXPIRES_IN || 90);
+    const cookieOptions = getJwtCookieOptions(
+      new Date(Date.now() + cookieExpiresIn * 24 * 60 * 60 * 1000)
+    );
 
     res.cookie("jwt", token, cookieOptions);
-    user.password = undefined;
+    const { password: _password, ...safeUser } = user;
     res.status(statusCode).json({
       status: "success",
       token,
-      data: { user },
+      user: safeUser,
     });
   }
 
@@ -45,10 +42,9 @@ export class AuthController {
     this.createSendToken(user, 200, res);
   });
 
-  logout = (req: Request, res: Response) => {
+  logout = (_req: Request, res: Response) => {
     res.cookie("jwt", "loggedout", {
-      expires: new Date(Date.now() + 10 * 1000),
-      httpOnly: true,
+      ...getJwtCookieOptions(new Date(Date.now() + 10 * 1000)),
     });
     res.status(200).json({ status: "success" });
   };
@@ -66,7 +62,7 @@ export class AuthController {
     };
   };
 
-  getCurrentUser  = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+  getCurrentUser = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
     const user = await this.authService.getme(req.user.id);
     res.status(200).json({
       status: "success",
@@ -85,14 +81,19 @@ export class AuthController {
   });
 
   forgotPassword = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
+    const clientUrl =
+      process.env.CLIENT_URL ||
+      process.env.FRONTEND_URL ||
+      req.get("origin") ||
+      `${req.protocol}://${req.get("host")}`;
+
     await this.authService.forgotPassword(
       req.body.email,
-      req.protocol,
-      req.get("host")
+      clientUrl
     );
     res.status(200).json({
       status: "success",
-      message: "Token sent to email!",
+      message: "If this email exists, reset instructions have been sent.",
     });
   });
 

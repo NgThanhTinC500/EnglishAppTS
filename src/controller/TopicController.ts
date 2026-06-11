@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import catchAsync from "../utils/catchAsync";
 import { TopicService } from "../service/topicService";
+import { TopicType } from "../entity/Topic"; // đường dẫn tới entity Topic
 export class TopicController {
     private topicService = new TopicService();
 
@@ -13,7 +14,7 @@ export class TopicController {
             message: "Topic created successfully"
         });
     })
-    
+
     updateTopic = catchAsync(async (req: Request, res: Response): Promise<void> => {
         const topicId = Number(req.params.topicId)
         const topicData = req.body;
@@ -21,17 +22,29 @@ export class TopicController {
         res.status(200).json({
             success: true,
             data: topic,
-            message: "TOPIC update successfull"
+            message: "Topic updated successfully"
         })
     })
+
+    deleteTopic = catchAsync(async (req: Request, res: Response): Promise<void> => {
+        const topicId = Number(req.params.topicId)
+        await this.topicService.deleteTopic(topicId)
+        res.status(200).json({
+            success: true,
+            data: null,
+            message: "Topic deleted successfully"
+        })
+    })
+
     getAllTopic = catchAsync(async (req: Request, res: Response): Promise<void> => {
-        const topics = await this.topicService.gellAllTopic()
-        res.status(201).json({
+        const type = req.query.type as TopicType | undefined;
+        const topics = await this.topicService.getAllTopic(type);
+        res.status(200).json({
             success: true,
             result: topics.length,
             data: topics,
-            message: "Get all topic successfully"
+            message: "Get all topics successfully",
         });
-    })
+    });
 
 }

@@ -19,16 +19,25 @@ export class HistoryController {
 
         const history = await historyService.getUserExamHistory(userId);
 
-        const result = history.map((item) => ({
-            attemptId: item.id,
-            examName: item.exam?.title,
-            date: item.createdAt.toLocaleString("vi-VN", {
-                timeZone: "Asia/Ho_Chi_Minh"
-            }),
-            score: item.score,
-            timeSpent: item.timeSpent ? HistoryController.formatTime(item.timeSpent) : "00:00:00",
-            status: item.status
-        }));
+        const result = history.map((item) => {
+            const timeSpent =
+                item.startedAt && item.submittedAt
+                    ? Math.floor((item.submittedAt.getTime() - item.startedAt.getTime()) / 1000)
+                    : 0;
+
+            return {
+                attemptId: item.id,
+                examName: item.exam?.title,
+                date: item.createdAt.toLocaleString("vi-VN", {
+                    timeZone: "Asia/Ho_Chi_Minh"
+                }),
+                score: item.score,
+                totalQuestions: item.totalQuestions,
+                correctCount: item.correctCount,
+                timeSpent: HistoryController.formatTime(timeSpent),
+                status: item.status
+            };
+        });
 
 
         res.json({ history: result });
