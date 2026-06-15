@@ -92,6 +92,46 @@ export class CommentService {
         return comments.map((comment) => this.toCommentResponse(comment, currentUserId));
     }
 
+    async updateComment(commentId: number, userId: string, content: string) {
+        const comment = await this.commentRepository.findOne({
+            where: { id: commentId },
+        });
+
+        if (!comment) {
+            throw new AppError("Khong tim thay binh luan", 404);
+        }
+
+        if (comment.userId !== userId) {
+            throw new AppError("Ban khong co quyen sua binh luan nay", 403);
+        }
+
+        comment.content = content.trim();
+        await this.commentRepository.save(comment);
+
+        return this.getCommentById(commentId, userId);
+    }
+
+    async deleteComment(commentId: number, userId: string) {
+        const comment = await this.commentRepository.findOne({
+            where: { id: commentId },
+        });
+
+        if (!comment) {
+            throw new AppError("Khong tim thay binh luan", 404);
+        }
+
+        if (comment.userId !== userId) {
+            throw new AppError("Ban khong co quyen xoa binh luan nay", 403);
+        }
+
+        await this.commentRepository.remove(comment);
+
+        return {
+            id: commentId,
+            lectureId: comment.lectureId,
+        };
+    }
+
     async toggleLike(commentId: number, userId: string) {
         const comment = await this.commentRepository.findOne({
             where: { id: commentId },

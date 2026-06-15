@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 // import { AppDataSource } from "../data-source";
 // import { User } from "../entity/User";
 import { UserService } from "../service/userService";
+import catchAsync from "../utils/catchAsync";
 
 const userService = new UserService();
 
@@ -53,4 +54,14 @@ export class UserController {
     const result = await userService.deleteUser(id);
     res.status(200).json(result);
   }
+
+  static toggleRole = catchAsync(async (req: Request, res: Response) => {
+    const id = String(req.params.id);
+    const user = await userService.toggleUserRole(id, req.user.id);
+
+    res.status(200).json({
+      status: "success",
+      data: { user },
+    });
+  });
 }

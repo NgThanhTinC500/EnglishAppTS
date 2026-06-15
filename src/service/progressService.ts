@@ -67,6 +67,15 @@ type VocabularyActivityDayRow = {
     activityCount: number;
 };
 
+type ListeningProgressRow = {
+    totalLessons: number;
+    learnedLessons: number;
+    checkAnsweredCount: number;
+    checkCorrectCount: number;
+    dictationAnsweredCount: number;
+    dictationCorrectCount: number;
+};
+
 export class ProgressService {
     private clampDays(days?: number) {
         if (!Number.isFinite(days)) return 7;
@@ -374,6 +383,98 @@ export class ProgressService {
             byTopic,
             recentAttempts,
             weakTopics,
+        };
+    }
+
+    async getListeningProgress(userId: string) {
+        const rows = await AppDataSource.query(
+            `
+            WITH available_questions AS (
+                SELECT DISTINCT q.id, q.type
+                FROM questions q
+                INNER JOIN exam_questions eq
+                    ON eq."questionId" = q.id
+                INNER JOIN exams e
+                    ON e.id = eq."examId"
+                    AND e."isActive" = true
+                INNER JOIN topics t
+                    ON t.id = e."topicId"
+                    AND t.type = $2
+                WHERE q.category = $3
+                    AND q.type IN ($4, $5)
+            ),
+            user_answers AS (
+                SELECT aa."questionId", aa.result, aq.type
+                FROM attempt_answers aa
+                INNER JOIN attempts a
+                    ON a.id = aa."attemptId"
+                    AND a."userId" = $1
+                INNER JOIN available_questions aq
+                    ON aq.id = aa."questionId"
+            )
+            SELECT
+                (SELECT COUNT(*) FROM available_questions)::int AS "totalLessons",
+                (SELECT COUNT(DISTINCT ua."questionId") FROM user_answers ua)::int AS "learnedLessons",
+                COUNT(*) FILTER (WHERE ua.type = $4)::int AS "checkAnsweredCount",
+                COUNT(*) FILTER (
+                    WHERE ua.type = $4 AND ua.result = $6
+                )::int AS "checkCorrectCount",
+                COUNT(*) FILTER (WHERE ua.type = $5)::int AS "dictationAnsweredCount",
+                COUNT(*) FILTER (
+                    WHERE ua.type = $5 AND ua.result = $6
+                )::int AS "dictationCorrectCount"
+            FROM user_answers ua
+            `,
+            [
+                userId,
+                TopicType.LISTENING,
+                QuestionCategory.LISTENING,
+                QuestionType.SINGLE_CHOICE,
+                QuestionType.DICTATION,
+                AnswerResult.CORRECT,
+            ],
+        );
+
+        const row = rows[0] as ListeningProgressRow | undefined;
+        const totalLessons = this.toNumber(row?.totalLessons);
+        const learnedLessons = this.toNumber(row?.learnedLessons);
+        const checkAnsweredCount = this.toNumber(row?.checkAnsweredCount);
+        const checkCorrectCount = this.toNumber(row?.checkCorrectCount);
+        const dictationAnsweredCount = this.toNumber(row?.dictationAnsweredCount);
+        const dictationCorrectCount = this.toNumber(row?.dictationCorrectCount);
+        const checkAccuracy = this.getAccuracy(
+            checkCorrectCount,
+            checkAnsweredCount,
+        );
+        const dictationAccuracy = this.getAccuracy(
+            dictationCorrectCount,
+            dictationAnsweredCount,
+        );
+        const totalAnswered = checkAnsweredCount + dictationAnsweredCount;
+        const totalCorrect = checkCorrectCount + dictationCorrectCount;
+
+        return {
+            overview: {
+                learnedLessons,
+                totalLessons,
+                remainingLessons: Math.max(totalLessons - learnedLessons, 0),
+                completionPercent: totalLessons
+                    ? Math.round((learnedLessons / totalLessons) * 100)
+                    : 0,
+            },
+            accuracy: {
+                averagePercent: this.getAccuracy(totalCorrect, totalAnswered),
+                listeningCheck: {
+                    answeredCount: checkAnsweredCount,
+                    correctCount: checkCorrectCount,
+                    accuracyPercent: checkAccuracy,
+                },
+                dictation: {
+                    answeredCount: dictationAnsweredCount,
+                    correctCount: dictationCorrectCount,
+                    accuracyPercent: dictationAccuracy,
+                },
+            },
         };
     }
 

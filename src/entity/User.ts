@@ -8,6 +8,8 @@ import {
 import { VocabularySet } from "./VocabularySet";
 import { Blog } from "./Blog";
 import { Attempt } from "./Attempt";
+import { ForumComment } from "./ForumComment";
+import { ForumPost } from "./ForumPost";
 
 export enum UserRole {
     ADMIN = "admin",
@@ -61,4 +63,10 @@ export class User {
 
     @OneToMany(() => Attempt, (a) => a.user)
     attempts: Attempt[];
+
+    @OneToMany(() => ForumPost, (post) => post.user)
+    forumPosts: ForumPost[];
+
+    @OneToMany(() => ForumComment, (comment) => comment.user)
+    forumComments: ForumComment[];
 }

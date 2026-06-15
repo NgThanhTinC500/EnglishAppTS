@@ -1,0 +1,10 @@
+
+> EngslishApp@0.0.1 start:dev
+> ts-node-dev --respawn --transpile-only src/index.ts
+
+[INFO] 21:16:19 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.8.2)
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: ep4JzD_aHV4oOuaHAAAB
+a user connected: bWK37SPOXqPzv_oqAAAD
