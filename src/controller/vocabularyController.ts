@@ -127,6 +127,20 @@ export class VocabularyController {
         ======================
     */
 
+    lookupVocabulary = catchAsync(
+        async (req: Request, res: Response) => {
+            const word = String(req.query.word ?? "");
+
+            const result = await this.vocabularyService.lookupVocabulary(word);
+
+            res.status(200).json({
+                success: true,
+                data: result,
+                message: "Lookup vocabulary successfully",
+            });
+        }
+    );
+
     getVocabularyPracticeItems = catchAsync(
         async (req: Request, res: Response) => {
             const setId = this.parseId(req.params.topicId, "topicId");
@@ -185,31 +199,6 @@ export class VocabularyController {
                 success: true,
                 data: result,
                 message: "Start vocabulary practice session successfully",
-            });
-        }
-    );
-
-    recordFlashcardAnswer = catchAsync(
-        async (req: Request, res: Response) => {
-            const userId = this.getUserId(req);
-            const sessionId = this.parseId(req.params.sessionId, "sessionId");
-            const vocabularyId = this.parseId(
-                String(req.body?.vocabularyId),
-                "vocabularyId"
-            );
-            const resultValue = String(req.body?.result ?? "");
-
-            const result = await this.vocabularyService.recordFlashcardAnswer(
-                userId,
-                sessionId,
-                vocabularyId,
-                resultValue
-            );
-
-            res.status(201).json({
-                success: true,
-                data: result,
-                message: "Record flashcard answer successfully",
             });
         }
     );

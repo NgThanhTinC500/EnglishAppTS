@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 const examSetParamsSchema = z.object({
-    examSetId: z.coerce.number().int().positive("examSetId must be a positive integer"),
+    examSetId: z.coerce.number().int().positive("examSetId phải là số nguyên dương"),
 }).strict();
 
 const partParamsSchema = z.object({
-    id: z.coerce.number().int().positive("id must be a positive integer"),
+    id: z.coerce.number().int().positive("id phải là số nguyên dương"),
 }).strict();
 
 export const getToeicExamPartsByExamSetSchema = z.object({
@@ -14,9 +14,9 @@ export const getToeicExamPartsByExamSetSchema = z.object({
 
 export const createToeicExamPartSchema = z.object({
     body: z.object({
-        partNumber: z.number().int().min(1, "partNumber must be from 1 to 7").max(7, "partNumber must be from 1 to 7"),
-        questionCount: z.number().int().positive("questionCount must be a positive integer"),
-        durationSeconds: z.number().int().nonnegative("durationSeconds must be a non-negative integer").nullable().optional(),
+        partNumber: z.number().int().min(1, "partNumber phải nằm trong khoảng từ 1 đến 7").max(7, "partNumber phải nằm trong khoảng từ 1 đến 7"),
+        questionCount: z.number().int().positive("questionCount phải là số nguyên dương"),
+        durationSeconds: z.number().int().nonnegative("durationSeconds phải là số nguyên không âm").nullable().optional(),
     }).strict(),
     params: examSetParamsSchema,
 });
@@ -27,12 +27,12 @@ export const getToeicExamPartByIdSchema = z.object({
 
 export const updateToeicExamPartSchema = z.object({
     body: z.object({
-        questionCount: z.number().int().positive("questionCount must be a positive integer").optional(),
-        durationSeconds: z.number().int().nonnegative("durationSeconds must be a non-negative integer").nullable().optional(),
+        questionCount: z.number().int().positive("questionCount phải là số nguyên dương").optional(),
+        durationSeconds: z.number().int().nonnegative("durationSeconds phải là số nguyên không âm").nullable().optional(),
     }).strict().refine(
         (data) => Object.keys(data).length > 0,
         {
-            message: "At least one field is required",
+            message: "Cần cung cấp ít nhất một trường để cập nhật",
         }
     ),
     params: partParamsSchema,

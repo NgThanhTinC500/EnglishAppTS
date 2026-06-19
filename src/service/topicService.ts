@@ -1,13 +1,16 @@
 import { Repository } from "typeorm";
 import { AppDataSource } from "../data-source";
+import { Exam } from "../entity/Exam";
 import { Topic, TopicType } from "../entity/Topic";
 import { AppError } from "../utils/appError";
 
 export class TopicService {
     private topicRepository: Repository<Topic>;
+    private examRepository: Repository<Exam>;
 
     constructor() {
         this.topicRepository = AppDataSource.getRepository(Topic);
+        this.examRepository = AppDataSource.getRepository(Exam);
     }
 
     private ensurePositiveInteger(value: number, fieldName: string) {
@@ -18,15 +21,20 @@ export class TopicService {
 
     private validateTopicType(type?: TopicType) {
         if (type !== undefined && !Object.values(TopicType).includes(type)) {
-            throw new AppError("Invalid topic type", 400);
+            throw new AppError("Kiểu topic không hợp lệ", 400);
         }
+    }
+
+    private async getExamCountByTopic(topicId: number) {
+        return this.examRepository.count({
+            where: { topicId }
+        });
     }
 
     async createTopic(topicData: Partial<Topic>) {
         if (!topicData.title?.trim()) {
-            throw new AppError("Title is required", 400);
+            throw new AppError("Bắt buộc có tiêu đề", 400);
         }
-
         const { title, description, type } = topicData;
         this.validateTopicType(type);
 
@@ -45,13 +53,21 @@ export class TopicService {
         const topic = await this.topicRepository.findOne({
             where: { id: topicId }
         });
-        if (!topic) throw new AppError("Topic not found", 404);
+        if (!topic) throw new AppError("Không tìm thấy topic", 404);
 
         const { title, description, type } = topicData;
         this.validateTopicType(type);
 
+        if (type !== undefined && type !== topic.type) {
+            const examCount = await this.getExamCountByTopic(topicId);
+
+            if (examCount > 0) {
+                throw new AppError("Không thể thay đổi kiểu topic sau khi đã tạo đề thi", 400);
+            }
+        }
+
         if (title !== undefined) {
-            if (!title.trim()) throw new AppError("Title is required", 400);
+            if (!title.trim()) throw new AppError("Bắt buộc có tiêu đề", 400);
             topic.title = title.trim();
         }
         if (description !== undefined) topic.description = description;
@@ -62,11 +78,15 @@ export class TopicService {
 
     async deleteTopic(topicId: number) {
         this.ensurePositiveInteger(topicId, "topicId");
-
         const topic = await this.topicRepository.findOne({
             where: { id: topicId }
         });
-        if (!topic) throw new AppError("Topic not found", 404);
+        if (!topic) throw new AppError("Không tìm thấy topic", 404);
+
+        const examCount = await this.getExamCountByTopic(topicId);
+        if (examCount > 0) {
+            throw new AppError("Không thể xóa topic sau khi đã tạo đề thi", 400);
+        }
 
         await this.topicRepository.delete(topicId);
     }
@@ -74,7 +94,6 @@ export class TopicService {
     // Get all topics with total questions count, filter by type if provided.
     async getAllTopic(type?: TopicType) {
         this.validateTopicType(type);
-
         return this.topicRepository.query(`
             SELECT
                 t.id,
@@ -83,13 +102,16 @@ export class TopicService {
                 t.type,
                 t."createdAt",
                 t."updatedAt",
-                COUNT(eq.id)::int AS "totalQuestions"
+                COUNT(DISTINCT q.id)::int AS "totalQuestions"
             FROM topics t
             LEFT JOIN exams e
                 ON e."topicId" = t.id
                 AND e."isActive" = true
             LEFT JOIN exam_questions eq
                 ON eq."examId" = e.id
+            LEFT JOIN questions q
+                ON q.id = eq."questionId"
+                AND q.category::text = t.type::text
             WHERE ($1::text IS NULL OR t.type = $1::topics_type_enum)
             GROUP BY
                 t.id,

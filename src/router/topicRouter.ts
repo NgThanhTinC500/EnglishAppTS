@@ -11,7 +11,12 @@ const authController = new AuthController();
 // Public topic and exam reads
 topicRouter.get("/topics", topicController.getAllTopic);
 topicRouter.get("/topics/:topicId/exams", examController.getAllExamsByTopicId)
-topicRouter.get("/topics/:topicId/exams/:examId", examController.getExamDetail)
+topicRouter.get(
+    "/topics/:topicId/exams/:examId",
+    authController.protect,
+    authController.restrictTo("admin"),
+    examController.getExamDetail
+)
 
 // TOPIC
 topicRouter.post("/topics", authController.protect, authController.restrictTo("admin"), topicController.createTopic);

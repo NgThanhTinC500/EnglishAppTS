@@ -64,6 +64,12 @@ vocabularyRouter.delete(
 );
 
 // Vocabulary practice
+vocabularyRouter.get(
+  "/vocabulary/lookup",
+  authController.protect,
+  authController.restrictTo("admin"),
+  vocabularyController.lookupVocabulary
+);
 // get vocabulary practice items by topic id
 vocabularyRouter.get(
   "/vocabulary/topics/:topicId/practice",
@@ -79,11 +85,6 @@ vocabularyRouter.post(
   "/vocabulary/practice-sessions",
   authController.protect,
   vocabularyController.startPracticeSession
-);
-vocabularyRouter.post(
-  "/vocabulary/practice-sessions/:sessionId/flashcard-answer",
-  authController.protect,
-  vocabularyController.recordFlashcardAnswer
 );
 vocabularyRouter.post(
   "/vocabulary/practice-sessions/:sessionId/spelling-answer",

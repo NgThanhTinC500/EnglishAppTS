@@ -18,6 +18,32 @@ import {
     VocabularyPracticeResult,
 } from "../entity/VocabularyPracticeEnums";
 
+type DictionaryPhonetic = {
+    text?: string;
+    audio?: string;
+};
+
+type DictionaryMeaning = {
+    partOfSpeech?: string;
+    definitions?: {
+        definition?: string;
+        example?: string;
+    }[];
+};
+
+type DictionaryEntry = {
+    word?: string;
+    phonetic?: string;
+    phonetics?: DictionaryPhonetic[];
+    meanings?: DictionaryMeaning[];
+};
+
+type MyMemoryTranslateResponse = {
+    responseData?: {
+        translatedText?: string;
+    };
+};
+
 export class VocabularyService {
     private vocabularySetRepository = AppDataSource.getRepository(VocabularySet);
 
@@ -76,23 +102,113 @@ export class VocabularyService {
             .replace(/\s+/g, " ");
     }
 
+    private normalizeNullableText(value: string | null | undefined) {
+        return value?.trim() || null;
+    }
+
+    private normalizeDictionaryAudioUrl(value: string | undefined) {
+        const audioUrl = value?.trim();
+        if (!audioUrl) return null;
+
+        if (audioUrl.startsWith("//")) {
+            return `https:${audioUrl}`;
+        }
+
+        return audioUrl;
+    }
+
+    private audioUrlMatchesDialect(audioUrl: string | undefined, dialect: "us" | "uk") {
+        const normalized = audioUrl?.toLowerCase() ?? "";
+        if (!normalized) return false;
+
+        if (dialect === "us") {
+            return /(^|[-_/])us([-_.]|$)|(^|[-_/])usa([-_.]|$)/.test(normalized);
+        }
+
+        return /(^|[-_/])uk([-_.]|$)|(^|[-_/])gb([-_.]|$)|(^|[-_/])br([-_.]|$)/.test(normalized);
+    }
+
+    private pickDictionaryAudioByDialect(
+        phonetics: DictionaryPhonetic[] = [],
+        dialect: "us" | "uk"
+    ) {
+        const withAudio = phonetics.find((item) =>
+            this.audioUrlMatchesDialect(item.audio, dialect)
+        );
+
+        return this.normalizeDictionaryAudioUrl(withAudio?.audio);
+    }
+
+    private pickDictionaryAudio(phonetics: DictionaryPhonetic[] = []) {
+        return (
+            this.pickDictionaryAudioByDialect(phonetics, "us") ??
+            this.pickDictionaryAudioByDialect(phonetics, "uk") ??
+            this.normalizeDictionaryAudioUrl(
+                phonetics.find((item) => item.audio?.trim())?.audio
+            )
+        );
+    }
+
+    private pickDictionaryPronunciation(entry: DictionaryEntry) {
+        const phoneticText =
+            entry.phonetics?.find((item) => item.text?.trim())?.text ??
+            entry.phonetic;
+
+        return this.normalizeNullableText(phoneticText);
+    }
+
+    private pickDictionaryExample(entry: DictionaryEntry) {
+        for (const meaning of entry.meanings ?? []) {
+            const example = meaning.definitions?.find((item) => item.example?.trim())?.example;
+            if (example) return example.trim();
+        }
+
+        return null;
+    }
+
+    private pickDictionaryDefinition(entry: DictionaryEntry) {
+        for (const meaning of entry.meanings ?? []) {
+            const definition = meaning.definitions?.find((item) => item.definition?.trim())?.definition;
+            if (definition) return definition.trim();
+        }
+
+        return null;
+    }
+
+    private async translateTextToVietnamese(text: string | null) {
+        if (!text) return null;
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+
+        try {
+            const response = await fetch(
+                `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|vi`,
+                {
+                    headers: {
+                        Accept: "application/json",
+                    },
+                    signal: controller.signal,
+                }
+            );
+
+            if (!response.ok) return null;
+
+            const result = (await response.json()) as MyMemoryTranslateResponse;
+            return this.normalizeNullableText(result.responseData?.translatedText);
+        } catch {
+            return null;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
     private ensurePracticeMode(mode: string) {
         if (!Object.values(VocabularyPracticeMode).includes(mode as VocabularyPracticeMode)) {
             throw new AppError("Invalid vocabulary practice mode", 400);
         }
 
         return mode as VocabularyPracticeMode;
-    }
-
-    private ensureFlashcardResult(result: string) {
-        if (
-            result !== VocabularyPracticeResult.REMEMBERED &&
-            result !== VocabularyPracticeResult.FORGOT
-        ) {
-            throw new AppError("Invalid flashcard result", 400);
-        }
-
-        return result as VocabularyPracticeResult.REMEMBERED | VocabularyPracticeResult.FORGOT;
     }
 
     private async findUserSessionOrFail(sessionId: number, userId: string) {
@@ -144,17 +260,11 @@ export class VocabularyService {
     }
 
     private getProgressStatusFromResult(result: VocabularyPracticeResult) {
-        if (
-            result === VocabularyPracticeResult.REMEMBERED ||
-            result === VocabularyPracticeResult.CORRECT
-        ) {
+        if (result === VocabularyPracticeResult.CORRECT) {
             return VocabularyProgressStatus.MASTERED;
         }
 
-        if (
-            result === VocabularyPracticeResult.FORGOT ||
-            result === VocabularyPracticeResult.WRONG
-        ) {
+        if (result === VocabularyPracticeResult.WRONG) {
             return VocabularyProgressStatus.REVIEW;
         }
 
@@ -191,21 +301,6 @@ export class VocabularyService {
         progress.flashcardForgotCount = progress.flashcardForgotCount ?? 0;
         progress.spellingCorrectCount = progress.spellingCorrectCount ?? 0;
         progress.spellingWrongCount = progress.spellingWrongCount ?? 0;
-
-        if (
-            result === VocabularyPracticeResult.REMEMBERED ||
-            result === VocabularyPracticeResult.FORGOT
-        ) {
-            progress.flashcardSeenCount += 1;
-        }
-
-        if (result === VocabularyPracticeResult.REMEMBERED) {
-            progress.flashcardRememberedCount += 1;
-        }
-
-        if (result === VocabularyPracticeResult.FORGOT) {
-            progress.flashcardForgotCount += 1;
-        }
 
         if (result === VocabularyPracticeResult.CORRECT) {
             progress.spellingCorrectCount += 1;
@@ -351,6 +446,67 @@ export class VocabularyService {
         };
     }
 
+    async lookupVocabulary(wordValue: string) {
+        const word = wordValue.trim();
+        if (!word) {
+            throw new AppError("Word is required", 400);
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        let response: Response;
+
+        try {
+            response = await fetch(
+                `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
+                {
+                    headers: {
+                        Accept: "application/json",
+                    },
+                    signal: controller.signal,
+                }
+            );
+        } catch {
+            throw new AppError("Cannot fetch dictionary data right now", 502);
+        } finally {
+            clearTimeout(timeout);
+        }
+
+        if (response.status === 404) {
+            throw new AppError("Dictionary data not found for this word", 404);
+        }
+
+        if (!response.ok) {
+            throw new AppError("Cannot fetch dictionary data right now", 502);
+        }
+
+        const entries = (await response.json()) as DictionaryEntry[];
+        const entry = entries[0];
+        if (!entry) {
+            throw new AppError("Dictionary data not found for this word", 404);
+        }
+
+        const firstMeaning = entry.meanings?.[0];
+        const definitionEn = this.pickDictionaryDefinition(entry);
+        const translatedMeaning = await this.translateTextToVietnamese(definitionEn);
+        const audioUsUrl = this.pickDictionaryAudioByDialect(entry.phonetics, "us");
+        const audioUkUrl = this.pickDictionaryAudioByDialect(entry.phonetics, "uk");
+
+        return {
+            word: entry.word || word,
+            pronunciation: this.pickDictionaryPronunciation(entry),
+            partOfSpeech: this.normalizeNullableText(firstMeaning?.partOfSpeech),
+            audioUrl: audioUsUrl ?? audioUkUrl ?? this.pickDictionaryAudio(entry.phonetics),
+            audioUsUrl,
+            audioUkUrl,
+            meaning: translatedMeaning ?? definitionEn,
+            definitionEn,
+            example: this.pickDictionaryExample(entry),
+            source: "dictionaryapi.dev",
+            translationSource: translatedMeaning ? "mymemory.translated.net" : null,
+        };
+    }
+
     async startPracticeSession(
         userId: string,
         vocabSetId: number,
@@ -368,73 +524,6 @@ export class VocabularyService {
                 startedAt: new Date(),
             })
         );
-    }
-
-    async recordFlashcardAnswer(
-        userId: string,
-        sessionId: number,
-        vocabularyId: number,
-        resultValue: string
-    ) {
-        const session = await this.findUserSessionOrFail(sessionId, userId);
-        if (session.mode !== VocabularyPracticeMode.FLASHCARD) {
-            throw new AppError("Session is not a flashcard session", 400);
-        }
-
-        const result = this.ensureFlashcardResult(resultValue);
-        const vocabulary = await this.findVocabularyForPracticeOrFail(vocabularyId);
-        if (vocabulary.vocabSetId !== session.vocabSetId) {
-            throw new AppError("Vocabulary does not belong to this session set", 400);
-        }
-
-        const existingAnswer = await this.practiceAnswerRepository.findOne({
-            where: {
-                sessionId,
-                userId,
-                vocabularyId,
-                mode: VocabularyPracticeMode.FLASHCARD,
-            },
-        });
-        if (existingAnswer) {
-            throw new AppError("This flashcard has already been answered in this session", 409);
-        }
-
-        const answeredAt = new Date();
-        const answer = await this.practiceAnswerRepository.save(
-            this.practiceAnswerRepository.create({
-                sessionId,
-                userId,
-                vocabularyId,
-                mode: VocabularyPracticeMode.FLASHCARD,
-                result,
-                answeredAt,
-            })
-        );
-
-        session.seenCount = session.seenCount ?? 0;
-        session.rememberedCount = session.rememberedCount ?? 0;
-        session.forgotCount = session.forgotCount ?? 0;
-        session.seenCount += 1;
-        if (result === VocabularyPracticeResult.REMEMBERED) {
-            session.rememberedCount += 1;
-        } else {
-            session.forgotCount += 1;
-        }
-        session.endedAt = answeredAt;
-        await this.sessionRepository.save(session);
-
-        const progress = await this.updateVocabularyProgress(
-            userId,
-            vocabulary,
-            result,
-            answeredAt
-        );
-
-        return {
-            answer,
-            session,
-            progress,
-        };
     }
 
     async submitSpellingAnswer(
@@ -524,8 +613,13 @@ export class VocabularyService {
             vocabSetId: setId,
             word: data.word.trim(),
             meaning: data.meaning.trim(),
-            pronunciation: data.pronunciation?.trim() || null,
-            example: data.example?.trim() || null,
+            definitionEn: this.normalizeNullableText(data.definitionEn),
+            pronunciation: this.normalizeNullableText(data.pronunciation),
+            partOfSpeech: this.normalizeNullableText(data.partOfSpeech),
+            audioUrl: this.normalizeNullableText(data.audioUrl),
+            audioUsUrl: this.normalizeNullableText(data.audioUsUrl),
+            audioUkUrl: this.normalizeNullableText(data.audioUkUrl),
+            example: this.normalizeNullableText(data.example),
         });
 
         return this.vocabularyRepository.save(vocabulary);
@@ -556,11 +650,34 @@ export class VocabularyService {
         Object.assign(vocabulary, {
             word: data.word?.trim() ?? vocabulary.word,
             meaning: data.meaning?.trim() ?? vocabulary.meaning,
+            definitionEn:
+                data.definitionEn === undefined
+                    ? vocabulary.definitionEn
+                    : this.normalizeNullableText(data.definitionEn),
             pronunciation:
                 data.pronunciation === undefined
                     ? vocabulary.pronunciation
-                    : data.pronunciation?.trim() || null,
-            example: data.example === undefined ? vocabulary.example : data.example?.trim() || null,
+                    : this.normalizeNullableText(data.pronunciation),
+            partOfSpeech:
+                data.partOfSpeech === undefined
+                    ? vocabulary.partOfSpeech
+                    : this.normalizeNullableText(data.partOfSpeech),
+            audioUrl:
+                data.audioUrl === undefined
+                    ? vocabulary.audioUrl
+                    : this.normalizeNullableText(data.audioUrl),
+            audioUsUrl:
+                data.audioUsUrl === undefined
+                    ? vocabulary.audioUsUrl
+                    : this.normalizeNullableText(data.audioUsUrl),
+            audioUkUrl:
+                data.audioUkUrl === undefined
+                    ? vocabulary.audioUkUrl
+                    : this.normalizeNullableText(data.audioUkUrl),
+            example:
+                data.example === undefined
+                    ? vocabulary.example
+                    : this.normalizeNullableText(data.example),
         });
 
         return this.vocabularyRepository.save(vocabulary);

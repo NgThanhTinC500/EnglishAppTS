@@ -1,10 +1,15 @@
 import { In, Repository } from "typeorm";
 import { AppDataSource } from "../data-source";
 import { AnswerResult, AttemptAnswer } from "../entity/AttemptAnswer";
-import { Attempt, AttemptMode, AttemptStatus } from "../entity/Attempt";
+import {
+    Attempt,
+    AttemptMode,
+    AttemptPracticeMode,
+    AttemptStatus,
+} from "../entity/Attempt";
 import { Exam } from "../entity/Exam";
 import { ExamQuestion } from "../entity/ExamQuestion";
-import { Question, QuestionType } from "../entity/Question";
+import { Question, QuestionCategory, QuestionType } from "../entity/Question";
 import { QuestionOption } from "../entity/QuestionOption";
 import { AppError } from "../utils/appError";
 
@@ -46,6 +51,44 @@ export class AttemptService {
     private ensurePositiveInteger(value: number, fieldName: string) {
         if (!Number.isInteger(value) || value <= 0) {
             throw new AppError(`${fieldName} must be a positive integer`, 400);
+        }
+    }
+
+    private validatePracticeMode(value: AttemptPracticeMode) {
+        if (!Object.values(AttemptPracticeMode).includes(value)) {
+            throw new AppError("Invalid practice mode", 400);
+        }
+    }
+
+    private questionMatchesPracticeMode(question: Question, practiceMode: AttemptPracticeMode) {
+        if (practiceMode === AttemptPracticeMode.GRAMMAR) {
+            return question.type === QuestionType.SINGLE_CHOICE &&
+                question.category === QuestionCategory.GRAMMAR;
+        }
+
+        if (practiceMode === AttemptPracticeMode.LISTENING_CHECK) {
+            return question.type === QuestionType.SINGLE_CHOICE &&
+                question.category === QuestionCategory.LISTENING;
+        }
+
+        return question.type === QuestionType.DICTATION &&
+            question.category === QuestionCategory.LISTENING;
+    }
+
+    private filterExamQuestionsByPracticeMode(
+        examQuestions: ExamQuestion[],
+        practiceMode: AttemptPracticeMode
+    ) {
+        return examQuestions.filter(
+            (examQuestion) =>
+                examQuestion.question &&
+                this.questionMatchesPracticeMode(examQuestion.question, practiceMode)
+        );
+    }
+
+    private ensureQuestionMatchesPracticeMode(attempt: Attempt, question: Question) {
+        if (!this.questionMatchesPracticeMode(question, attempt.practiceMode)) {
+            throw new AppError("Question does not match this attempt practice mode", 400);
         }
     }
 
@@ -160,9 +203,9 @@ export class AttemptService {
         transcript = "The boy is drinking coffee"
         answers    = ["boy", "drinking", "coffee"]
 
-        Bước 1: "The [BLANK] is drinking coffee"
-        Bước 2: "The [BLANK] is [BLANK] coffee"
-        Bước 3: "The [BLANK] is [BLANK] [BLANK]"
+        Step 1: "The [BLANK] is drinking coffee"
+        Step 2: "The [BLANK] is [BLANK] coffee"
+        Step 3: "The [BLANK] is [BLANK] [BLANK]"
     */
     private replaceAnswersWithBlank(transcript: string, answers: string[]) {
         return answers.reduce((maskedTranscript, answer) => {
@@ -216,6 +259,7 @@ export class AttemptService {
     private toQuestionForAttempt(question: Question) {
         return {
             id: question.id,
+            category: question.category,
             type: question.type,
             content: question.content,
             audioUrl: question.audioUrl,
@@ -230,11 +274,15 @@ export class AttemptService {
     // this method is used to build the answered questions data for attempt response,
     //  by fetching the AttemptAnswer records for the attempt and the questions in the exam,
     //  and mapping them to the format suitable for returning in the API response
-    // lấy lại tất cả các câu hỏi đã trả lời của attempt đó, 
-    // bao gồm cả những câu đã trả lời đúng và sai, để hiển thị lại cho người dùng khi họ tiếp tục làm bài
-    private async buildAnsweredQuestions(attemptId: number, exam: Exam) {
+    // Load answered questions for this attempt so the UI can restore progress.
+    // Includes both correct and wrong answers when the user resumes.
+    private async buildAnsweredQuestions(
+        attemptId: number,
+        exam: Exam,
+        scopedExamQuestions = exam.examQuestions
+    ) {
         // get all questionIds of the exam
-        const examQuestionIds = exam.examQuestions.map((eq) => eq.questionId);
+        const examQuestionIds = scopedExamQuestions.map((eq) => eq.questionId);
         if (!examQuestionIds.length) return [];
 
         // get all AttemptAnswer records for the attempt and the questions in the exam
@@ -244,13 +292,13 @@ export class AttemptService {
         if (!rawAnswers.length) return [];
 
         const questionById = new Map(
-            exam.examQuestions
+            scopedExamQuestions
                 .filter((eq) => eq.question)
                 .map((eq) => [eq.questionId, eq.question])
         );
         // create a map of question IDs to their order indices
         const orderByQuestionId = new Map(
-            exam.examQuestions.map((eq) => [eq.questionId, eq.orderIndex])
+            scopedExamQuestions.map((eq) => [eq.questionId, eq.orderIndex])
         );
 
         return rawAnswers
@@ -269,7 +317,7 @@ export class AttemptService {
                 return {
                     questionId: answer.questionId,
                     selectedOptionId: answer.selectedOptionId,
-                    // bỏ qua cac field ko cần thiết của options khi trả về cho client, chỉ giữ lại id, label, content
+                    // Return only the option fields needed by the client.
                     selectedOption: this.toAnswerOption(selectedOption),
                     answerText: answer.answerText,
                     result: answer.result,
@@ -284,8 +332,14 @@ export class AttemptService {
 
     // start a new attempt for an exam,
     //  or return existing in-progress attempt if exists
-    async startExam(userId: string, examId: number, restart = false) {
+    async startExam(
+        userId: string,
+        examId: number,
+        restart = false,
+        practiceMode = AttemptPracticeMode.GRAMMAR
+    ) {
         this.ensurePositiveInteger(examId, "examId");
+        this.validatePracticeMode(practiceMode);
 
         const exam = await this.examRepository.findOne({
             where: {
@@ -306,7 +360,12 @@ export class AttemptService {
 
         // find existing in-progress attempt for this user and exam
         const existingAttempt = await this.attemptRepository.findOne({
-            where: { userId, examId, status: AttemptStatus.IN_PROGRESS },
+            where: {
+                userId,
+                examId,
+                practiceMode,
+                status: AttemptStatus.IN_PROGRESS,
+            },
         });
         // if restart=true, expire the existing attempt and create a new one
         if (restart && existingAttempt) {
@@ -324,17 +383,25 @@ export class AttemptService {
                     userId,
                     examId,
                     mode: AttemptMode.PRACTICE,
+                    practiceMode,
                     status: AttemptStatus.IN_PROGRESS,
                     startedAt: new Date(),
                 })
             );
 
-        const answeredQuestions = await this.buildAnsweredQuestions(attempt.id, exam);
+        const scopedExamQuestions = this.filterExamQuestionsByPracticeMode(
+            exam.examQuestions,
+            attempt.practiceMode
+        );
+        const answeredQuestions = await this.buildAnsweredQuestions(
+            attempt.id,
+            exam,
+            scopedExamQuestions
+        );
 
         return {
             attempt,
-            questions: exam.examQuestions
-                .filter((eq) => eq.question)
+            questions: scopedExamQuestions
                 .map((eq) => this.toQuestionForAttempt(eq.question)),
             answeredQuestions,
         };
@@ -357,9 +424,10 @@ export class AttemptService {
 
         const question = await this.questionRepository.findOne({
             where: { id: questionId },
-            select: ["id", "type", "explanation", "transcript"]
+            select: ["id", "category", "type", "explanation", "transcript"]
         });
         if (!question) throw new AppError("Question not found", 404);
+        this.ensureQuestionMatchesPracticeMode(attempt, question);
         if (question.type !== QuestionType.SINGLE_CHOICE) {
             throw new AppError("Question is not a single choice question", 400);
         }
@@ -427,6 +495,7 @@ export class AttemptService {
         if (!question || question.type !== QuestionType.DICTATION) {
             throw new AppError("Dictation question not found", 404);
         }
+        this.ensureQuestionMatchesPracticeMode(attempt, question);
         if (!question.dictationAnswer) {
             throw new AppError("Dictation answer is not configured", 400);
         }
@@ -483,7 +552,7 @@ export class AttemptService {
             where: { id: attemptId, userId, examId }
         });
         if (!attempt) {
-            throw new AppError("Không tồn tại lần thi này", 404);
+            throw new AppError("Attempt not found", 404);
         }
         if (attempt.status !== AttemptStatus.IN_PROGRESS) {
             throw new AppError("Exam attempt is not in progress", 400);
@@ -491,16 +560,29 @@ export class AttemptService {
 
         const exam = await this.examRepository.findOne({
             where: { id: examId },
-            relations: { examQuestions: true }
+            relations: {
+                examQuestions: {
+                    question: true
+                }
+            }
         });
-        if (!exam) throw new AppError("Không tìm thấy đề thi", 404);
+        if (!exam) throw new AppError("Exam not found", 404);
 
-        const allExamQuestionIds = exam.examQuestions
+        const scopedExamQuestions = this.filterExamQuestionsByPracticeMode(
+            exam.examQuestions,
+            attempt.practiceMode
+        );
+        const scopedExamQuestionIds = scopedExamQuestions
             .slice()
             .sort((first, second) => (first.orderIndex ?? 0) - (second.orderIndex ?? 0))
             .map((item) => item.questionId);
-        let examQuestionIds = allExamQuestionIds;
+        const allExamQuestionIds = exam.examQuestions.map((item) => item.questionId);
+        let examQuestionIds = scopedExamQuestionIds;
         let isScopedSubmit = false;
+
+        if (!scopedExamQuestionIds.length) {
+            throw new AppError("No questions available for this practice mode", 400);
+        }
 
         if (questionIds !== undefined) {
             if (!Array.isArray(questionIds)) {
@@ -508,6 +590,10 @@ export class AttemptService {
             }
 
             const scopedQuestionIds = [...new Set(questionIds.map(Number))];
+            if (!scopedQuestionIds.length) {
+                throw new AppError("questionIds must not be empty", 400);
+            }
+
             const hasInvalidQuestionId = scopedQuestionIds.some(
                 (questionId) => !Number.isInteger(questionId) || questionId <= 0
             );
@@ -522,11 +608,18 @@ export class AttemptService {
                 throw new AppError("Some questions do not belong to this exam", 400);
             }
 
+            const outOfPracticeModeQuestionIds = scopedQuestionIds.filter(
+                (questionId) => !scopedExamQuestionIds.includes(questionId)
+            );
+            if (outOfPracticeModeQuestionIds.length) {
+                throw new AppError("Some questions do not match this attempt practice mode", 400);
+            }
+
             // Keep the exam order even when the client submits a scoped question list.
-            examQuestionIds = allExamQuestionIds.filter((questionId) =>
+            examQuestionIds = scopedExamQuestionIds.filter((questionId) =>
                 scopedQuestionIds.includes(questionId)
             );
-            isScopedSubmit = scopedQuestionIds.length !== allExamQuestionIds.length;
+            isScopedSubmit = scopedQuestionIds.length !== scopedExamQuestionIds.length;
         }
 
         const totalQuestions = examQuestionIds.length;
@@ -604,7 +697,7 @@ export class AttemptService {
                     questionType: question?.type,
                     content: question?.content,
                     selectedOptionId: item?.selectedOptionId ?? null,
-                    selectedOption: item?.selectedOption ?? null,
+                    selectedOption: this.toAnswerOption(item?.selectedOption),
                     answerText: item?.answerText ?? null,
                     correctOptionId: correctOption?.id ?? null,
                     correctOption: this.toAnswerOption(correctOption),

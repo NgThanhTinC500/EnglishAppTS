@@ -1,4 +1,5 @@
 import { AttemptService } from "../service/attemptService"
+import { AttemptPracticeMode } from "../entity/Attempt";
 import { AppError } from "../utils/appError";
 import catchAsync from "../utils/catchAsync";
 import { Request, Response } from "express";
@@ -16,7 +17,13 @@ export class AttemptController {
         const userId = this.getUserId(req);
         const examId = Number(req.params.examId);
         const restart = req.body?.restart === true;
-        const attempt = await this.attemptService.startExam(userId, examId, restart);
+        const practiceMode = req.body?.practiceMode as AttemptPracticeMode | undefined;
+        const attempt = await this.attemptService.startExam(
+            userId,
+            examId,
+            restart,
+            practiceMode
+        );
 
         res.status(201).json({
             success: true,
@@ -70,7 +77,7 @@ export class AttemptController {
         res.status(200).json({
             success: true,
             data: result,
-            message: "Hoan thanh bai thi"
+            message: "Exam submitted successfully"
         })
     })
 

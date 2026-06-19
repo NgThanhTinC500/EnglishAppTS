@@ -2,11 +2,11 @@ import { z } from "zod";
 import { ToeicOptionLabel } from "../entity/ToeicQuestionOption";
 
 const questionParamsSchema = z.object({
-    questionId: z.coerce.number().int().positive("questionId must be a positive integer"),
+    questionId: z.coerce.number().int().positive("questionId phải là số nguyên dương"),
 }).strict();
 
 const optionParamsSchema = z.object({
-    id: z.coerce.number().int().positive("id must be a positive integer"),
+    id: z.coerce.number().int().positive("id phải là số nguyên dương"),
 }).strict();
 
 export const getToeicQuestionOptionsByQuestionSchema = z.object({
@@ -19,7 +19,7 @@ export const createToeicQuestionOptionSchema = z.object({
         contentEn: z
             .string()
             .trim()
-            .min(1, "contentEn is required"),
+            .min(1, "contentEn là bắt buộc"),
         contentVi: z.string().trim().nullable(),
         isCorrect: z.boolean().default(false),
     }).strict(),
@@ -35,14 +35,14 @@ export const updateToeicQuestionOptionSchema = z.object({
         contentEn: z
             .string()
             .trim()
-            .min(1, "contentEn is required")
+            .min(1, "contentEn là bắt buộc")
             .optional(),
         contentVi: z.string().trim().nullable().optional(),
         isCorrect: z.boolean().optional(),
     }).strict().refine(
         (data) => Object.keys(data).length > 0,
         {
-            message: "At least one field is required",
+            message: "Cần cung cấp ít nhất một trường để cập nhật",
         }
     ),
     params: optionParamsSchema,

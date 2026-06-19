@@ -11,7 +11,7 @@ export class TopicController {
         res.status(201).json({
             success: true,
             data: topic,
-            message: "Topic created successfully"
+            message: "Tạo topic thành công"
         });
     })
 
@@ -22,7 +22,7 @@ export class TopicController {
         res.status(200).json({
             success: true,
             data: topic,
-            message: "Topic updated successfully"
+            message: "Cập nhật topic thành công"
         })
     })
 

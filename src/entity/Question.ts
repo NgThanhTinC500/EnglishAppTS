@@ -37,9 +37,6 @@ export class Question {
     @Column({ type: "varchar", length: 255, nullable: true })
     audioFileName: string | null;
 
-    @Column({ type: "integer", nullable: true })
-    audioDuration: number | null;
-
     @Column({ type: "text", nullable: true })
     transcript: string | null;
 

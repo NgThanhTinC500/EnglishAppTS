@@ -21,8 +21,23 @@ export class Vocabulary {
   @Column({ type: "text" })
   meaning!: string;
 
+  @Column({ type: "text", nullable: true })
+  definitionEn!: string | null;
+
   @Column({ nullable: true })
   pronunciation!: string | null;
+
+  @Column({ nullable: true })
+  partOfSpeech!: string | null;
+
+  @Column({ type: "text", nullable: true })
+  audioUrl!: string | null;
+
+  @Column({ type: "text", nullable: true })
+  audioUsUrl!: string | null;
+
+  @Column({ type: "text", nullable: true })
+  audioUkUrl!: string | null;
 
   @Column({ nullable: true })
   example!: string | null;

@@ -58,14 +58,92 @@ export class QuestionService {
 
     private validateQuestionType(value: QuestionType) {
         if (!Object.values(QuestionType).includes(value)) {
-            throw new AppError("Invalid question type", 400);
+            throw new AppError("Kiểu question type không hợp lệ", 400);
         }
     }
 
     private validateQuestionCategory(value: QuestionCategory) {
         if (!Object.values(QuestionCategory).includes(value)) {
-            throw new AppError("Invalid question category", 400);
+            throw new AppError("Loại câu hỏi không hợp lệ", 400);
         }
+    }
+
+    private getDefaultCategoryByType(questionType: QuestionType) {
+        if (questionType === QuestionType.DICTATION) {
+            return QuestionCategory.LISTENING;
+        }
+
+        return QuestionCategory.GRAMMAR;
+    }
+
+    private ensureQuestionTypeMatchesCategory(
+        questionType: QuestionType,
+        questionCategory: QuestionCategory
+    ) {
+        if (
+            questionType === QuestionType.DICTATION &&
+            questionCategory !== QuestionCategory.LISTENING
+        ) {
+            throw new AppError("Câu hỏi dictation phải thuộc loại listening", 400);
+        }
+    }
+
+    // đảm bảo type câu hỏi trùng với type topic
+    private ensureCategoryMatchesTopic(
+        topicType: string | null | undefined,
+        questionCategory: QuestionCategory
+    ) {
+        if (!topicType) {
+            throw new AppError("Đề tài không được cấu hình", 400);
+        }
+
+        if (topicType !== questionCategory) {
+            throw new AppError(
+                `Loại câu hỏi phải khớp với loại đề tài. Dự kiến "${topicType}", nhận được "${questionCategory}"`,
+                400
+            );
+        }
+    }
+
+    private ensureCategoryMatchesLinkedTopics(
+        linkedExamQuestions: ExamQuestion[],
+        questionCategory: QuestionCategory
+    ) {
+        const invalidLink = linkedExamQuestions.find(
+            (item) => String(item.exam?.topic?.type ?? "") !== questionCategory
+        );
+
+        if (invalidLink) {
+            this.ensureCategoryMatchesTopic(
+                invalidLink.exam?.topic?.type,
+                questionCategory
+            );
+        }
+    }
+
+    private normalizeOptionIsCorrect(value: boolean | string) {
+        if (typeof value === "boolean") return value;
+
+        if (typeof value === "string") {
+            const normalizedValue = value.trim().toLowerCase();
+            if (normalizedValue === "true") return true;
+            if (normalizedValue === "false") return false;
+        }
+
+        throw new AppError("isCorrect phải là boolean", 400);
+    }
+
+    private normalizeSingleChoiceOptions(options: {
+        label: string;
+        content: string;
+        isCorrect: boolean | string;
+    }[]) {
+        if (!Array.isArray(options)) return options;
+
+        return options.map((option) => ({
+            ...option,
+            isCorrect: this.normalizeOptionIsCorrect(option.isCorrect),
+        }));
     }
 
     private validateSingleChoiceOptions(options: {
@@ -73,26 +151,29 @@ export class QuestionService {
         content: string;
         isCorrect: boolean;
     }[]) {
+        // kiểm tra xem phải mảng ko, vầ có ít nhất 2 tùy chọn
         if (!Array.isArray(options) || options.length < 2) {
-            throw new AppError("At least 2 options required", 400);
+            throw new AppError("Ít nhất 2 tùy chọn được yêu cầu", 400);
         }
-
+        // kiêm tra xem tất cả các tùy chọn có nhãn và nội dung hợp lệ không
+        // some, kiểm tra có ít nhất 1 phần tử thỏa điều kiện
         const hasInvalidOption = options.some(
             (option) => !option.label?.trim() || !option.content?.trim()
         );
         if (hasInvalidOption) {
-            throw new AppError("Option label and content are required", 400);
+            throw new AppError("Thẻ tùy chọn và nội dung là bắt buộc", 400);
         }
-
+        // tìm số lượng đáp án đúng, chỉ có 1 đáp án đúng được phép
         const correctCount = options.filter((option) => option.isCorrect).length;
         if (correctCount !== 1) {
-            throw new AppError("Must have exactly 1 correct answer", 400);
+            throw new AppError("Phải có đúng 1 đáp án đúng", 400);
         }
     }
 
 
     // convert Question entity to a safe object for API response 
     // by removing correct answer and other sensitive info
+    // safe response for single choice question:
     private toSafeQuestion(question: Question | null) {
         if (!question) return question;
 
@@ -133,7 +214,7 @@ export class QuestionService {
         options?: {
             label: string;
             content: string;
-            isCorrect: boolean;
+            isCorrect: boolean | string;
         }[];
         examId?: number;
     }) {
@@ -143,27 +224,47 @@ export class QuestionService {
             const examRepo = manager.getRepository(Exam);
             const examQuestionRepo = manager.getRepository(ExamQuestion);
             const questionType = data.type ?? QuestionType.SINGLE_CHOICE;
-            const questionCategory = data.category ?? QuestionCategory.GRAMMAR;
+            const questionCategory = data.category ?? this.getDefaultCategoryByType(questionType);
+            const normalizedOptions = questionType === QuestionType.SINGLE_CHOICE
+                ? this.normalizeSingleChoiceOptions(data.options ?? [])
+                : [];
             this.validateQuestionType(questionType);
             this.validateQuestionCategory(questionCategory);
+            this.ensureQuestionTypeMatchesCategory(questionType, questionCategory);
+
+            let targetExamId: number | null = null;
+            if (data.examId !== undefined) {
+                targetExamId = Number(data.examId);
+                this.ensurePositiveInteger(targetExamId, "examId");
+
+                const exam = await examRepo.findOne({
+                    where: { id: targetExamId },
+                    relations: { topic: true }
+                });
+                if (!exam) throw new AppError("Exam not found", 404);
+
+                this.ensureCategoryMatchesTopic(
+                    exam.topic?.type,
+                    questionCategory
+                );
+            }
 
             // ===== VALIDATE =====
             if (questionType === QuestionType.SINGLE_CHOICE) {
                 if (!data.content || data.content.trim() === "") {
-                    throw new AppError("Question content is required", 400);
+                    throw new AppError("Phải có nội dung câu hỏi", 400);
                 }
-                this.validateSingleChoiceOptions(data.options ?? []);
+                this.validateSingleChoiceOptions(normalizedOptions);
             }
-
             if (questionType === QuestionType.DICTATION) {
                 if (!data.dictationAnswer?.trim()) {
-                    throw new AppError("Dictation answer is required", 400);
+                    throw new AppError("Phải có đáp án dictation", 400);
                 }
                 if (!data.audioUrl) {
-                    throw new AppError("Audio is required for dictation", 400);
+                    throw new AppError("Phải có tệp âm thanh cho dictation", 400);
                 }
                 if (!data.transcript?.trim()) {
-                    throw new AppError("Transcript is required for dictation", 400);
+                    throw new AppError("Transcript phải có cho dictation", 400);
                 }
             }
 
@@ -185,8 +286,8 @@ export class QuestionService {
             const savedQuestion = await questionRepo.save(question);
 
             // ===== CREATE OPTIONS =====
-            if (questionType === QuestionType.SINGLE_CHOICE && data.options) {
-                const options = data.options.map(opt =>
+            if (questionType === QuestionType.SINGLE_CHOICE && normalizedOptions.length > 0) {
+                const options = normalizedOptions.map(opt =>
                     optionRepo.create({
                         questionId: savedQuestion.id,
                         label: opt.label.trim().toUpperCase(),
@@ -198,19 +299,14 @@ export class QuestionService {
             }
 
             // ===== ADD TO EXAM (optional) =====
-            if (data.examId !== undefined) {
-                const examId = Number(data.examId);
-                this.ensurePositiveInteger(examId, "examId");
-                const exam = await examRepo.findOne({ where: { id: examId } });
-                if (!exam) throw new AppError("Exam not found", 404);
-
+            if (targetExamId !== null) {
                 const last = await examQuestionRepo.findOne({
-                    where: { examId },
+                    where: { examId: targetExamId },
                     order: { orderIndex: "DESC" }
                 });
 
                 await examQuestionRepo.save(examQuestionRepo.create({
-                    examId,
+                    examId: targetExamId,
                     questionId: savedQuestion.id,
                     orderIndex: last ? last.orderIndex + 1 : 1
                 }));
@@ -241,7 +337,7 @@ export class QuestionService {
             }
         })
         if (!result) {
-            throw new AppError("Question not found", 404);
+            throw new AppError("Câu hỏi không tìm thấy", 404);
         }
         return this.toSafeQuestion(result);
     }
@@ -255,7 +351,7 @@ export class QuestionService {
         });
 
         if (!question || question.type !== QuestionType.DICTATION) {
-            throw new AppError("Dictation question not found", 404);
+            throw new AppError("Câu hỏi dictation không tìm thấy", 404);
         }
 
         return this.toSafeQuestion(question);
@@ -263,7 +359,7 @@ export class QuestionService {
 
     async submitDictationAnswer(questionId: number, answers: string[]) {
         if (!Array.isArray(answers)) {
-            throw new AppError("answers must be an array", 400);
+            throw new AppError("Đáp án phải là một mảng", 400);
         }
 
         const question = await this.questionRepository.findOne({
@@ -271,12 +367,12 @@ export class QuestionService {
         });
 
         if (!question || question.type !== QuestionType.DICTATION) {
-            throw new AppError("Dictation question not found", 404);
+            throw new AppError("Câu hỏi dictation không tìm thấy", 404);
         }
 
         const correctAnswers = this.splitDictationAnswers(question.dictationAnswer);
         if (correctAnswers.length === 0) {
-            throw new AppError("Dictation answer is not configured", 400);
+            throw new AppError("Đáp án dictation không được cấu hình", 400);
         }
 
         const normalizedUserAnswers = answers.map(answer =>
@@ -304,20 +400,20 @@ export class QuestionService {
             explanation?: string;
             audioUrl?: string | null;
             audioFileName?: string | null;
-            audioDuration?: number | null;
             transcript?: string | null;
             showTranscript?: boolean;
             dictationAnswer?: string | null;
             options?: {
                 label: string;
                 content: string;
-                isCorrect: boolean;
+                isCorrect: boolean | string;
             }[];
         }
     ) {
         return AppDataSource.transaction(async (manager) => {
             const questionRepo = manager.getRepository(Question);
             const optionRepo = manager.getRepository(QuestionOption);
+            const examQuestionRepo = manager.getRepository(ExamQuestion);
 
             const question = await questionRepo.findOne({
                 where: { id: questionId },
@@ -327,20 +423,37 @@ export class QuestionService {
             });
 
             if (!question) {
-                throw new AppError("Question not found", 404);
+                throw new AppError("Câu hỏi không tìm thấy", 404);
             }
 
             const nextType = data.type ?? question.type;
             const nextCategory = data.category ?? question.category;
             this.validateQuestionType(nextType);
             this.validateQuestionCategory(nextCategory);
+            this.ensureQuestionTypeMatchesCategory(nextType, nextCategory);
+
+            const linkedExamQuestions = await examQuestionRepo.find({
+                where: { questionId },
+                relations: {
+                    exam: {
+                        topic: true
+                    }
+                }
+            });
+            this.ensureCategoryMatchesLinkedTopics(
+                linkedExamQuestions,
+                nextCategory
+            );
+
             const nextContent = nextType === QuestionType.DICTATION
                 ? data.transcript ?? question.transcript ?? data.content ?? question.content
                 : data.content ?? question.content;
-            const nextOptions = data.options ?? question.options ?? [];
+            const nextOptions = data.options !== undefined
+                ? this.normalizeSingleChoiceOptions(data.options)
+                : question.options ?? [];
 
             if (nextType === QuestionType.SINGLE_CHOICE && (!nextContent || nextContent.trim() === "")) {
-                throw new AppError("Question content is required", 400);
+                throw new AppError("Nội dung câu hỏi là bắt buộc", 400);
             }
 
             if (nextType === QuestionType.SINGLE_CHOICE) {
@@ -352,13 +465,13 @@ export class QuestionService {
                 const nextTranscript = data.transcript ?? question.transcript;
                 const nextAudioUrl = data.audioUrl === undefined ? question.audioUrl : data.audioUrl;
                 if (!nextDictationAnswer?.trim()) {
-                    throw new AppError("Dictation answer is required", 400);
+                    throw new AppError("Đáp án dictation là bắt buộc", 400);
                 }
                 if (!nextTranscript?.trim()) {
-                    throw new AppError("Transcript is required for dictation", 400);
+                    throw new AppError("Transcript là bắt buộc cho dictation", 400);
                 }
                 if (!nextAudioUrl) {
-                    throw new AppError("Audio is required for dictation", 400);
+                    throw new AppError("Tệp âm thanh là bắt buộc cho dictation", 400);
                 }
             }
 
@@ -383,7 +496,7 @@ export class QuestionService {
             if (nextType === QuestionType.SINGLE_CHOICE) {
                 if (data.options) {
                     await optionRepo.delete({ questionId });
-                    const options = data.options.map((option) =>
+                    const options = nextOptions.map((option) =>
                         optionRepo.create({
                             questionId,
                             label: option.label.trim().toUpperCase(),
@@ -414,7 +527,7 @@ export class QuestionService {
         });
 
         if (!question) {
-            throw new AppError("Question not found", 404);
+            throw new AppError("Câu hỏi không tìm thấy", 404);
         }
 
         await this.questionRepository.delete(questionId);

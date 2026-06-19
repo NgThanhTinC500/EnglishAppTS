@@ -20,8 +20,8 @@ export class CourseService {
         const title = courseData.title?.trim();
         const description = courseData.description?.trim();
 
-        if (!title) throw new AppError("Course title is required", 400);
-        if (!description) throw new AppError("Course description is required", 400);
+        if (!title) throw new AppError("Phải có tiêu đề khóa học", 400);
+        if (!description) throw new AppError("Phải có mô tả khóa học", 400);
 
         return {
             title,
@@ -82,12 +82,12 @@ export class CourseService {
 
         if (updateData.title !== undefined) {
             const title = updateData.title.trim();
-            if (!title) throw new AppError("Course title is required", 400);
+            if (!title) throw new AppError("Phải có tiêu đề khóa học", 400);
             course.title = title;
         }
         if (updateData.description !== undefined) {
             const description = updateData.description.trim();
-            if (!description) throw new AppError("Course description is required", 400);
+            if (!description) throw new AppError("Phải có mô tả khóa học", 400);
             course.description = description;
         }
         if (updateData.thumbnailUrl !== undefined) {
