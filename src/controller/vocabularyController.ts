@@ -2,18 +2,26 @@ import { Request, Response } from "express";
 import catchAsync from "../utils/catchAsync";
 import { AppError } from "../utils/appError";
 import { VocabularyService } from "../service/vocabularyService";
+import { VocabularyLookupService } from "../service/vocabularyLookupService";
+import { VocabularyPracticeService } from "../service/vocabularyPracticeService";
 
 export class VocabularyController {
     private vocabularyService = new VocabularyService();
 
+    private vocabularyLookupService = new VocabularyLookupService();
+
+    private vocabularyPracticeService = new VocabularyPracticeService();
+
+    // validate route param and return string value4
+    // "12" => yes
+    // ["12", "13"] => no
     private getRouteParam(
         value: string | string[] | undefined,
         fieldName: string
     ) {
         if (typeof value !== "string") {
-            throw new AppError(`Invalid ${fieldName}`, 400);
+            throw new AppError(` ${fieldName} không hợp lệ`, 400);
         }
-
         return value;
     }
 
@@ -23,9 +31,9 @@ export class VocabularyController {
     ) {
         const normalizedValue = this.getRouteParam(value, fieldName);
         const id = Number(normalizedValue);
-
+        // convert string to number and check if it is a valid positive integer
         if (!Number.isInteger(id) || id <= 0) {
-            throw new AppError(`Invalid ${fieldName}`, 400);
+            throw new AppError(` ${fieldName} không hợp lệ`, 400);
         }
 
         return id;
@@ -33,9 +41,8 @@ export class VocabularyController {
 
     private getUserId(req: Request) {
         if (!req.user) {
-            throw new AppError("Unauthorized", 401);
+            throw new AppError("Không có quyền truy cập", 401);
         }
-
         return req.user.id;
     }
 
@@ -56,7 +63,7 @@ export class VocabularyController {
             res.status(201).json({
                 success: true,
                 data: result,
-                message: "Create vocabulary set successfully",
+                message: "Tạo bộ từ vựng thành công",
             });
         }
     );
@@ -64,12 +71,11 @@ export class VocabularyController {
     getAllVocabularySets = catchAsync(
         async (req: Request, res: Response) => {
             const result = await this.vocabularyService.getAllVocabularySets();
-
             res.status(200).json({
                 success: true,
                 total: result.length,
                 data: result,
-                message: "Get vocabulary sets successfully",
+                message: "Lấy bộ từ vựng thành công",
             });
         }
     );
@@ -85,7 +91,7 @@ export class VocabularyController {
             res.status(200).json({
                 success: true,
                 data: result,
-                message: "Get vocabulary set successfully",
+                message: "Lấy chi tiết bộ từ vựng thành công",
             });
         }
     );
@@ -102,7 +108,7 @@ export class VocabularyController {
             res.status(200).json({
                 success: true,
                 data: result,
-                message: "Update vocabulary set successfully",
+                message: "Cập nhật bộ từ vựng thành công",
             });
         }
     );
@@ -116,7 +122,7 @@ export class VocabularyController {
             res.status(200).json({
                 success: true,
                 data: null,
-                message: "Delete vocabulary set successfully",
+                message: "Xóa bộ từ vựng thành công",
             });
         }
     );
@@ -130,22 +136,20 @@ export class VocabularyController {
     lookupVocabulary = catchAsync(
         async (req: Request, res: Response) => {
             const word = String(req.query.word ?? "");
-
-            const result = await this.vocabularyService.lookupVocabulary(word);
-
+            const result = await this.vocabularyLookupService.lookupVocabulary(word);
             res.status(200).json({
                 success: true,
                 data: result,
-                message: "Lookup vocabulary successfully",
+                message: "Tìm kiếm từ vựng thành công",
             });
         }
     );
 
     getVocabularyPracticeItems = catchAsync(
         async (req: Request, res: Response) => {
-            const setId = this.parseId(req.params.topicId, "topicId");
+            const setId = this.parseId(req.params.setId, "setId");
 
-            const result = await this.vocabularyService.getVocabularyPracticeItems(
+            const result = await this.vocabularyPracticeService.getVocabularyPracticeItems(
                 setId
             );
 
@@ -153,7 +157,7 @@ export class VocabularyController {
                 success: true,
                 total: result.length,
                 data: result,
-                message: "Get vocabulary practice items successfully",
+                message: "Lấy mục luyện tập từ vựng thành công",
             });
         }
     );
@@ -167,7 +171,7 @@ export class VocabularyController {
             const answerText = String(req.body?.answerText ?? "");
 
             const result =
-                await this.vocabularyService.checkVocabularyPracticeAnswer(
+                await this.vocabularyPracticeService.checkVocabularyPracticeAnswer(
                     vocabularyId,
                     answerText
                 );
@@ -175,7 +179,7 @@ export class VocabularyController {
             res.status(200).json({
                 success: true,
                 data: result,
-                message: "Check vocabulary answer successfully",
+                message: "Kiểm tra đáp án từ vựng thành công",
             });
         }
     );
@@ -189,7 +193,7 @@ export class VocabularyController {
             );
             const mode = String(req.body?.mode ?? "");
 
-            const result = await this.vocabularyService.startPracticeSession(
+            const result = await this.vocabularyPracticeService.startPracticeSession(
                 userId,
                 vocabSetId,
                 mode
@@ -198,7 +202,7 @@ export class VocabularyController {
             res.status(201).json({
                 success: true,
                 data: result,
-                message: "Start vocabulary practice session successfully",
+                message: "Bắt đầu phiên luyện tập từ vựng thành công",
             });
         }
     );
@@ -213,7 +217,7 @@ export class VocabularyController {
             );
             const answerText = String(req.body?.answerText ?? "");
 
-            const result = await this.vocabularyService.submitSpellingAnswer(
+            const result = await this.vocabularyPracticeService.submitSpellingAnswer(
                 userId,
                 sessionId,
                 vocabularyId,
@@ -223,7 +227,7 @@ export class VocabularyController {
             res.status(201).json({
                 success: true,
                 data: result,
-                message: "Submit spelling answer successfully",
+                message: "Gửi đáp án chính tả thành công",
             });
         }
     );
@@ -231,7 +235,6 @@ export class VocabularyController {
     createVocabulary = catchAsync(
         async (req: Request, res: Response) => {
             const setId = this.parseId(req.params.setId, "setId");
-
             const result = await this.vocabularyService.createVocabulary(
                 setId,
                 req.body
@@ -240,7 +243,7 @@ export class VocabularyController {
             res.status(201).json({
                 success: true,
                 data: result,
-                message: "Create vocabulary successfully",
+                message: "Tạo từ vựng thành công",
             });
         }
     );
@@ -257,7 +260,7 @@ export class VocabularyController {
                 success: true,
                 total: result.length,
                 data: result,
-                message: "Get vocabularies successfully",
+                message: "Lấy từ vựng thành công",
             });
         }
     );
@@ -279,7 +282,7 @@ export class VocabularyController {
             res.status(200).json({
                 success: true,
                 data: result,
-                message: "Get vocabulary detail successfully",
+                message: "Lấy chi tiết từ vựng thành công",
             });
         }
     );
@@ -301,7 +304,7 @@ export class VocabularyController {
             res.status(200).json({
                 success: true,
                 data: result,
-                message: "Update vocabulary successfully",
+                message: "Cập nhật từ vựng thành công",
             });
         }
     );
@@ -322,7 +325,7 @@ export class VocabularyController {
             res.status(200).json({
                 success: true,
                 data: null,
-                message: "Delete vocabulary successfully",
+                message: "Xóa từ vựng thành công",
             });
         }
     );

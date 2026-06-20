@@ -54,9 +54,6 @@ type VocabularyOverviewRow = {
 };
 
 type VocabularyTodayRow = {
-    flashcardSeenCount: number;
-    flashcardRememberedCount: number;
-    flashcardForgotCount: number;
     spellingAnsweredCount: number;
     spellingCorrectCount: number;
     spellingWrongCount: number;
@@ -552,47 +549,31 @@ export class ProgressService {
         const rows = await AppDataSource.query(
             `
             SELECT
-                COUNT(vpa.id) FILTER (WHERE vpa.mode = $4)::int AS "flashcardSeenCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.result = $5)::int AS "flashcardRememberedCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.result = $6)::int AS "flashcardForgotCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.mode = $7)::int AS "spellingAnsweredCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.result = $8)::int AS "spellingCorrectCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.result = $9)::int AS "spellingWrongCount"
+                COUNT(vpa.id)::int AS "spellingAnsweredCount",
+                COUNT(vpa.id) FILTER (WHERE vpa.result = $4)::int AS "spellingCorrectCount",
+                COUNT(vpa.id) FILTER (WHERE vpa.result = $5)::int AS "spellingWrongCount"
             FROM vocabulary_practice_answers vpa
             WHERE vpa."userId" = $1
                 AND vpa."answeredAt" >= $2
                 AND vpa."answeredAt" < $3
+                AND vpa.mode = $6
             `,
             [
                 userId,
                 today.from,
                 today.to,
-                VocabularyPracticeMode.FLASHCARD,
-                VocabularyPracticeResult.REMEMBERED,
-                VocabularyPracticeResult.FORGOT,
-                VocabularyPracticeMode.SPELLING,
                 VocabularyPracticeResult.CORRECT,
                 VocabularyPracticeResult.WRONG,
+                VocabularyPracticeMode.SPELLING,
             ],
         );
 
         const row = rows[0] as VocabularyTodayRow | undefined;
-        const flashcardSeenCount = this.toNumber(row?.flashcardSeenCount);
-        const flashcardRememberedCount = this.toNumber(row?.flashcardRememberedCount);
-        const flashcardForgotCount = this.toNumber(row?.flashcardForgotCount);
         const spellingAnsweredCount = this.toNumber(row?.spellingAnsweredCount);
         const spellingCorrectCount = this.toNumber(row?.spellingCorrectCount);
         const spellingWrongCount = this.toNumber(row?.spellingWrongCount);
 
         return {
-            flashcard: {
-                seenCount: flashcardSeenCount,
-                rememberedCount: flashcardRememberedCount,
-                forgotCount: flashcardForgotCount,
-                rememberedPercent: flashcardSeenCount
-                    ? Math.round((flashcardRememberedCount / flashcardSeenCount) * 100)
-                    : 0,
-            },
             spelling: {
                 answeredCount: spellingAnsweredCount,
                 correctCount: spellingCorrectCount,
@@ -612,10 +593,11 @@ export class ProgressService {
                 COUNT(vpa.id)::int AS "activityCount"
             FROM vocabulary_practice_answers vpa
             WHERE vpa."userId" = $1
+                AND vpa.mode = $2
             GROUP BY "activityDate"
             ORDER BY "activityDate" DESC
             `,
-            [userId],
+            [userId, VocabularyPracticeMode.SPELLING],
         );
 
         return (rows as VocabularyActivityDayRow[]).map((row) => ({
@@ -700,7 +682,7 @@ export class ProgressService {
             this.getVocabularyToday(userId),
             this.getVocabularyActivityDays(userId),
             AppDataSource.getRepository(VocabularyPracticeSession).findOne({
-                where: { userId },
+                where: { userId, mode: VocabularyPracticeMode.SPELLING },
                 order: { updatedAt: "DESC" },
             }),
         ]);

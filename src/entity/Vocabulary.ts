@@ -21,14 +21,8 @@ export class Vocabulary {
   @Column({ type: "text" })
   meaning!: string;
 
-  @Column({ type: "text", nullable: true })
-  definitionEn!: string | null;
-
   @Column({ nullable: true })
   pronunciation!: string | null;
-
-  @Column({ nullable: true })
-  partOfSpeech!: string | null;
 
   @Column({ type: "text", nullable: true })
   audioUrl!: string | null;
@@ -41,6 +35,9 @@ export class Vocabulary {
 
   @Column({ nullable: true })
   example!: string | null;
+
+  @Column({ type: "text", nullable: true })
+  exampleVi!: string | null;
 
   @Column()
   vocabSetId!: number;
