@@ -26,6 +26,7 @@ export class ToeicQuestion {
     @ManyToOne(() => ToeicQuestionGroup, (group) => group.questions, {
         onDelete: "CASCADE",
     })
+
     @JoinColumn({ name: "questionGroupId" })
     questionGroup: ToeicQuestionGroup;
 
@@ -33,13 +34,10 @@ export class ToeicQuestion {
     questionNumber: number;
 
     @Column({ type: "text", nullable: true })
-    contentEn: string | null;
+    content: string | null;
 
     @Column({ type: "text", nullable: true })
-    contentVi: string | null;
-
-    @Column({ type: "text", nullable: true })
-    explanationVi: string | null;
+    explanation: string | null;
 
     @Column({ nullable: true })
     correctOptionId: number | null;

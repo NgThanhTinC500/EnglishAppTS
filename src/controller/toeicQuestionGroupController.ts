@@ -32,7 +32,19 @@ export class ToeicQuestionGroupController {
 
     create = catchAsync(async (req: Request, res: Response): Promise<void> => {
         const examPartId = Number(req.params.examPartId);
-        const group = await this.toeicQuestionGroupService.create(examPartId, req.body);
+        const files = req.files as
+            | { audio?: Express.Multer.File[]; images?: Express.Multer.File[] }
+            | undefined;
+        const audioUrl = files?.audio?.[0] ? toToeicMediaUrl(files.audio[0]) : req.body.audioUrl;
+        const imageUrls = files?.images?.map((file) => toToeicMediaUrl(file)) ?? [];
+        const group = await this.toeicQuestionGroupService.create(examPartId, {
+            ...req.body,
+            audioUrl: audioUrl ?? null,
+            images: imageUrls.map((imageUrl, index) => ({
+                imageOrder: index + 1,
+                imageUrl,
+            })),
+        });
 
         res.status(201).json({
             status: "success",

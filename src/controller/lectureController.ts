@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import catchAsync from "../utils/catchAsync";
 import { LectureService } from "../service/lectureService";
+import { AppError } from "../utils/appError";
 
 export class LectureController {
     private lectureService: LectureService;
@@ -9,12 +10,22 @@ export class LectureController {
         this.lectureService = new LectureService();
     }
 
-    createLecture = catchAsync(async (req: Request, res: Response) => {
-        const lessonId = Number(req.params.lessonId);
-
-        if (isNaN(lessonId)) {
-            throw new Error("Invalid lesson id");
+    private parseId(value: string | string[] | undefined, fieldName: string) {
+        if (typeof value !== "string") {
+            throw new AppError(`${fieldName} không hợp lệ`, 400);
         }
+
+        const id = Number(value);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            throw new AppError(`${fieldName} không hợp lệ`, 400);
+        }
+
+        return id;
+    }
+
+    createLecture = catchAsync(async (req: Request, res: Response) => {
+        const lessonId = this.parseId(req.params.lessonId, "lessonId");
 
         const lectureData = req.body;
         const newLecture = await this.lectureService.createLecture(lessonId, lectureData);
@@ -27,11 +38,7 @@ export class LectureController {
     });
 
     getAllLecturesByLessonId = catchAsync(async (req: Request, res: Response) => {
-        const lessonId = Number(req.params.lessonId);
-
-        if (isNaN(lessonId)) {
-            throw new Error("Invalid lesson id");
-        }
+        const lessonId = this.parseId(req.params.lessonId, "lessonId");
 
         const lectures = await this.lectureService.getLecturesByLesson(lessonId);
 
@@ -43,12 +50,7 @@ export class LectureController {
     });
 
     getLectureDetail = catchAsync(async (req: Request, res: Response) => {
-        // const lessonId = Number(req.params.lessonId);
-        const lectureId = Number(req.params.lectureId);
-
-        // if (isNaN(lectureId)) {
-        //     throw new Error("Invalid id");
-        // }
+        const lectureId = this.parseId(req.params.lectureId, "lectureId");
 
         const lecture = await this.lectureService.getLectureById(lectureId);
 
@@ -60,11 +62,7 @@ export class LectureController {
     });
 
     updateLecture = catchAsync(async (req: Request, res: Response) => {
-        const lectureId = Number(req.params.lectureId);
-
-        if (isNaN(lectureId)) {
-            throw new Error("Invalid id");
-        }
+        const lectureId = this.parseId(req.params.lectureId, "lectureId");
 
         const updateData = req.body;
         const updatedLecture = await this.lectureService.updateLecture(
@@ -80,11 +78,7 @@ export class LectureController {
     });
 
     deleteLecture = catchAsync(async (req: Request, res: Response) => {
-        const lectureId = Number(req.params.lectureId);
-
-        if (isNaN(lectureId)) {
-            throw new Error("Invalid id");
-        }
+        const lectureId = this.parseId(req.params.lectureId, "lectureId");
 
         await this.lectureService.deleteLecture(lectureId);
 

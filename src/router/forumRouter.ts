@@ -6,8 +6,8 @@ const forumRouter = Router();
 const authController = new AuthController();
 const forumController = new ForumController();
 
-forumRouter.get("/posts", forumController.getPosts);
-forumRouter.get("/posts/:id", forumController.getPostById);
+forumRouter.get("/posts", authController.optionalProtect, forumController.getPosts);
+forumRouter.get("/posts/:id", authController.optionalProtect, forumController.getPostById);
 forumRouter.get("/posts/:id/comments", forumController.getComments);
 
 forumRouter.get(

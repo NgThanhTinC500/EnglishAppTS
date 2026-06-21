@@ -40,10 +40,7 @@ export class ToeicQuestionOption {
     optionLabel: ToeicOptionLabel;
 
     @Column({ type: "text" })
-    contentEn: string;
-
-    @Column({ type: "text", nullable: true })
-    contentVi: string | null;
+    content: string;
 
     @Column({ type: "boolean", default: false })
     isCorrect: boolean;

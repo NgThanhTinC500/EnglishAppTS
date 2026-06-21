@@ -30,6 +30,8 @@ toeicQuestionGroupRouter.post(
     "/toeic/parts/:examPartId/groups",
     authController.protect,
     authController.restrictTo("admin"),
+    uploadToeicGroupMedia,
+    handleUploadToeicMediaError,
     validateRequest(createToeicQuestionGroupSchema),
     toeicQuestionGroupController.create
 );

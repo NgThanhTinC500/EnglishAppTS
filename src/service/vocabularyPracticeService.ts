@@ -172,28 +172,6 @@ export class VocabularyPracticeService {
         }));
     }
 
-    async checkVocabularyPracticeAnswer(
-        vocabularyId: number,
-        answerText: string
-    ) {
-        if (!answerText.trim()) {
-            throw new AppError("Phải nhập đáp án", 400);
-        }
-
-        const vocabulary = await this.findVocabularyForPracticeOrFail(vocabularyId);
-        const isCorrect =
-            this.normalizeAnswer(answerText) === this.normalizeAnswer(vocabulary.word);
-
-        return {
-            vocabularyId: vocabulary.id,
-            answerText,
-            isCorrect,
-            correctAnswer: vocabulary.word,
-            meaning: vocabulary.meaning,
-            example: vocabulary.example,
-        };
-    }
-
     async startPracticeSession(
         userId: string,
         vocabSetId: number,

@@ -6,29 +6,30 @@ import { ToeicQuestionOption, ToeicOptionLabel } from "../entity/ToeicQuestionOp
 import { AppError } from "../utils/appError";
 
 interface CreateQuestionOptionInput {
+    id?: number;
     optionLabel: ToeicOptionLabel;
-    contentEn: string;
-    contentVi?: string | null;
+    content?: string;
     isCorrect?: boolean;
 }
 
 interface CreateQuestionInput {
     questionNumber: number;
-    contentEn?: string | null;
-    contentVi?: string | null;
-    explanationVi?: string | null;
+    content?: string | null;
+    explanation?: string | null;
+    options: CreateQuestionOptionInput[];
+}
+
+interface UpdateQuestionWithOptionsInput extends Partial<CreateQuestionInput> {
     options: CreateQuestionOptionInput[];
 }
 
 export class ToeicQuestionService {
     private toeicQuestionRepository: Repository<ToeicQuestion>;
     private toeicQuestionGroupRepository: Repository<ToeicQuestionGroup>;
-    private toeicQuestionOptionRepository: Repository<ToeicQuestionOption>;
 
     constructor() {
         this.toeicQuestionRepository = AppDataSource.getRepository(ToeicQuestion);
         this.toeicQuestionGroupRepository = AppDataSource.getRepository(ToeicQuestionGroup);
-        this.toeicQuestionOptionRepository = AppDataSource.getRepository(ToeicQuestionOption);
     }
 
     private ensurePositiveInteger(value: number, fieldName: string) {
@@ -66,14 +67,6 @@ export class ToeicQuestionService {
             }
 
             labels.add(option.optionLabel);
-
-            // Validate contentEn
-            if (!option.contentEn || option.contentEn.trim() === "") {
-                throw new AppError(
-                    `Option at index ${index} (${option.optionLabel}) must have contentEn`,
-                    400
-                );
-            }
 
             // Count correct options
             if (option.isCorrect) {
@@ -154,7 +147,7 @@ export class ToeicQuestionService {
         });
 
         if (existingQuestion) {
-            throw new AppError("Question number already exists in this group", 400);
+            throw new AppError(`Câu số ${data.questionNumber} đã tồn tại trong nhóm này`, 400);
         }
 
         // Use transaction to ensure data consistency
@@ -162,9 +155,8 @@ export class ToeicQuestionService {
             const question = transactionalEntityManager.create(ToeicQuestion, {
                 questionGroupId,
                 questionNumber: data.questionNumber,
-                contentEn: data.contentEn ?? null,
-                contentVi: data.contentVi ?? null,
-                explanationVi: data.explanationVi ?? null,
+                content: data.content ?? null,
+                explanation: data.explanation ?? null,
             });
 
             const savedQuestion = await transactionalEntityManager.save(question);
@@ -175,8 +167,7 @@ export class ToeicQuestionService {
                 transactionalEntityManager.create(ToeicQuestionOption, {
                     questionId: savedQuestion.id,
                     optionLabel: option.optionLabel,
-                    contentEn: option.contentEn,
-                    contentVi: option.contentVi ?? null,
+                    content: option.content?.trim() ?? "",
                     isCorrect: option.isCorrect ?? false,
                 })
             );
@@ -204,8 +195,9 @@ export class ToeicQuestionService {
         });
     }
 
-    async update(id: number, data: Partial<ToeicQuestion>) {
+    async updateWithOptions(id: number, data: UpdateQuestionWithOptionsInput) {
         this.ensurePositiveInteger(id, "id");
+        this.validateOptions(data.options);
 
         const question = await this.toeicQuestionRepository.findOne({
             where: { id },
@@ -225,63 +217,96 @@ export class ToeicQuestionService {
             });
 
             if (existingQuestion && existingQuestion.id !== question.id) {
-                throw new AppError("Question number already exists in this group", 400);
+                throw new AppError(`Câu số ${data.questionNumber} đã tồn tại trong nhóm này`, 400);
             }
-
-            question.questionNumber = data.questionNumber;
         }
-
-        if (data.contentEn !== undefined) {
-            question.contentEn = data.contentEn;
-        }
-
-        if (data.contentVi !== undefined) {
-            question.contentVi = data.contentVi;
-        }
-
-        if (data.explanationVi !== undefined) {
-            question.explanationVi = data.explanationVi;
-        }
-
-        return this.toeicQuestionRepository.save(question);
-    }
-
-    async setCorrectOption(id: number, correctOptionId: number) {
-        this.ensurePositiveInteger(id, "id");
-        this.ensurePositiveInteger(correctOptionId, "correctOptionId");
-
-        const question = await this.toeicQuestionRepository.findOne({
-            where: { id },
-        });
-
-        if (!question) throw new AppError("Toeic question not found", 404);
-
-        const option = await this.toeicQuestionOptionRepository.findOne({
-            where: {
-                id: correctOptionId,
-                questionId: id,
-            },
-        });
-
-        if (!option) throw new AppError("Toeic question option not found", 404);
 
         return AppDataSource.transaction(async (manager) => {
-            await manager.update(
-                ToeicQuestionOption,
+            const questionRepository = manager.getRepository(ToeicQuestion);
+            const optionRepository = manager.getRepository(ToeicQuestionOption);
+
+            const currentQuestion = await questionRepository.findOne({
+                where: { id },
+            });
+
+            if (!currentQuestion) throw new AppError("Toeic question not found", 404);
+
+            if (data.questionNumber !== undefined) {
+                currentQuestion.questionNumber = data.questionNumber;
+            }
+
+            if (data.content !== undefined) {
+                currentQuestion.content = data.content;
+            }
+
+            if (data.explanation !== undefined) {
+                currentQuestion.explanation = data.explanation;
+            }
+
+            await optionRepository.update(
                 { questionId: id },
                 { isCorrect: false }
             );
 
-            await manager.update(
-                ToeicQuestionOption,
-                { id: correctOptionId },
-                { isCorrect: true }
-            );
+            let correctOptionId: number | null = null;
+            const retainedOptionIds = new Set<number>();
 
-            question.correctOptionId = correctOptionId;
-            await manager.save(question);
+            for (const optionInput of data.options) {
+                const existingOption = optionInput.id
+                    ? await optionRepository.findOne({
+                        where: {
+                            id: optionInput.id,
+                            questionId: id,
+                        },
+                    })
+                    : await optionRepository.findOne({
+                        where: {
+                            questionId: id,
+                            optionLabel: optionInput.optionLabel,
+                        },
+                    });
 
-            return manager.findOne(ToeicQuestion, {
+                if (optionInput.id && !existingOption) {
+                    throw new AppError("Toeic question option not found", 404);
+                }
+
+                const option = existingOption ?? optionRepository.create({
+                    questionId: id,
+                    optionLabel: optionInput.optionLabel,
+                });
+
+                option.optionLabel = optionInput.optionLabel;
+                option.content = optionInput.content?.trim() ?? "";
+                option.isCorrect = optionInput.isCorrect === true;
+
+                const savedOption = await optionRepository.save(option);
+                retainedOptionIds.add(savedOption.id);
+
+                if (savedOption.isCorrect) {
+                    correctOptionId = savedOption.id;
+                }
+            }
+
+            const existingOptions = await optionRepository.find({
+                where: { questionId: id },
+            });
+
+            const removedOptionIds = existingOptions
+                .filter((option) => !retainedOptionIds.has(option.id))
+                .map((option) => option.id);
+
+            if (removedOptionIds.length > 0) {
+                await optionRepository.delete(removedOptionIds);
+            }
+
+            if (!correctOptionId) {
+                throw new AppError("Câu hỏi phải có đúng một lựa chọn đúng", 400);
+            }
+
+            currentQuestion.correctOptionId = correctOptionId;
+            await questionRepository.save(currentQuestion);
+
+            return questionRepository.findOne({
                 where: { id },
                 relations: {
                     options: true,

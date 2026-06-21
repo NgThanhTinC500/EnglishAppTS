@@ -162,28 +162,6 @@ export class VocabularyController {
         }
     );
 
-    checkVocabularyPracticeAnswer = catchAsync(
-        async (req: Request, res: Response) => {
-            const vocabularyId = this.parseId(
-                String(req.body?.vocabularyId),
-                "vocabularyId"
-            );
-            const answerText = String(req.body?.answerText ?? "");
-
-            const result =
-                await this.vocabularyPracticeService.checkVocabularyPracticeAnswer(
-                    vocabularyId,
-                    answerText
-                );
-
-            res.status(200).json({
-                success: true,
-                data: result,
-                message: "Kiểm tra đáp án từ vựng thành công",
-            });
-        }
-    );
-
     startPracticeSession = catchAsync(
         async (req: Request, res: Response) => {
             const userId = this.getUserId(req);

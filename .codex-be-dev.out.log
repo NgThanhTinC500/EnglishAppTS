@@ -622,3 +622,293 @@ a user connected: 6w7W73YUtfmPhASCAAAB
 [dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
 NODE_ENV = development
 [ERROR] 18:05:53 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 18:06:44 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\migration\1781800000000-AddVocabularyDictionaryFields.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: ojO5dFHpaZo6kGUSAAAB
+[INFO] 18:06:54 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\migration\1781900000000-AddVocabularyTranslationAndAudioVariants.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+NODE_ENV = development
+[ERROR] 18:06:56 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 18:07:02 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\migration\1782000000000-AddVocabularyPreviewMetadata.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: CR_BYqSoqig6aJRxAAAB
+[INFO] 18:08:05 Reinitializing TS compilation
+[INFO] 18:08:06 Restarting: D:\EngLishApp\BE\EnglishAppTS\tsconfig.json has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+NODE_ENV = development
+[ERROR] 18:08:12 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 18:08:56 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\migration\1782600000000-DropUnusedVocabularyFields.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: mUytzNIH6tmJ00D2AAAB
+a user connected: smzeHCtmh0RzTFl3AAAD
+user disconnected: smzeHCtmh0RzTFl3AAAD
+user disconnected: mUytzNIH6tmJ00D2AAAB
+a user connected: 9cryR0fZ7GFv14vZAAAF
+[INFO] 18:32:36 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\vocabularyLookupService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+NODE_ENV = development
+[ERROR] 18:32:41 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 18:32:46 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\vocabularyRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: b9ef-yS6ssd5Iv8EAAAB
+[INFO] 18:33:48 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\vocabularyController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: yFkYf9BrO3OABqFWAAAB
+[INFO] 18:35:23 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\vocabularyRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: FgpVUUpKLH55wBzVAAAB
+[INFO] 18:35:35 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\vocabularyController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 18:35:38 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 19:54:05 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\vocabularyRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 19:54:17 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 10:04:18 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\attemptRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+NODE_ENV = development
+[ERROR] 10:04:23 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 10:04:45 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\attemptRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+NODE_ENV = development
+[ERROR] 10:04:48 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 10:04:49 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\attemptRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: lnUxO2AjoBaa5koOAAAB
+user disconnected: lnUxO2AjoBaa5koOAAAB
+[INFO] 10:07:31 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\index.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3001 (development)
+[INFO] 10:12:13 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\lectureController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3001 (development)
+[INFO] 10:12:45 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\lectureController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3001 (development)
+[INFO] 10:18:21 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\vocabularyRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+NODE_ENV = development
+Server đang chạy ở port 3001 (development)
+[INFO] 10:20:11 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\vocabularyController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+NODE_ENV = development
+Server đang chạy ở port 3001 (development)
+[INFO] 10:20:20 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\vocabularyPracticeService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+NODE_ENV = development
+[ERROR] 10:20:23 Error: listen EADDRINUSE: address already in use :::3001
+[INFO] 10:22:15 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\authController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+NODE_ENV = development
+[INFO] 10:22:18 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\forumRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+NODE_ENV = development
+Server đang chạy ở port 3001 (development)
+[INFO] 10:59:32 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+NODE_ENV = development
+Server đang chạy ở port 3001 (development)
+[INFO] 14:58:25 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\index.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+NODE_ENV = development
+[ERROR] 14:58:30 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:19:54 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\validations\toeicQuestion.schema.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: tgBVWyon1AP9v4AmAAAB
+[INFO] 15:20:29 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicQuestionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+NODE_ENV = development
+[ERROR] 15:20:34 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:20:44 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\toeicQuestionController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+NODE_ENV = development
+[ERROR] 15:20:49 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:20:55 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\toeicQuestionRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+NODE_ENV = development
+[ERROR] 15:20:59 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:21:05 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicQuestionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 15:21:09 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:29:31 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\index.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 15:29:36 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:29:42 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\toeicQuestionRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: 2HlMlQqDkCsPnQgQAAAB
+[INFO] 15:29:56 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\toeicQuestionController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+NODE_ENV = development
+[ERROR] 15:29:59 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:30:20 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicQuestionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: I-NEYEy1SvwbrAmNAAAB
+[INFO] 15:30:30 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\validations\toeicQuestion.schema.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: jGmilrEmY8FHu6-LAAAB
+[INFO] 15:31:18 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\toeicQuestionRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 15:31:21 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:31:27 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\toeicQuestionController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: Bek4WCn89F0xjY-3AAAB
+[INFO] 15:31:41 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicQuestionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: hrZMQjeLSGNFpJyRAAAB
+[INFO] 15:31:51 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\validations\toeicQuestion.schema.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: EAOhIILD6HOtYE0CAAAB
+user disconnected: EAOhIILD6HOtYE0CAAAB
+a user connected: KhUJmoDEnResWoN1AAAD
+[INFO] 15:49:32 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\router\toeicQuestionRouter.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: yQ5PM2O8AZnQAUXbAAAB
+[INFO] 15:56:23 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSetService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 15:56:28 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:56:29 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSetService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: 2Rcx_phv9Lq4Yf8QAAAB
+[INFO] 15:57:00 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSetService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 15:57:03 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:57:07 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSetService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: 3wc-dNEQ-2FTmWntAAAB
+[INFO] 15:57:18 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSetService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 15:57:21 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:57:27 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSetService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: 0uRvfyz9yzKR6XArAAAB
+[INFO] 15:57:35 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSetService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+NODE_ENV = development
+[ERROR] 15:57:38 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 15:57:40 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSetService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: MorzRGoxSeaQnxvQAAAB
+[INFO] 16:12:02 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+NODE_ENV = development
+[ERROR] 16:12:08 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:12:11 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 16:12:16 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:12:18 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: nBxLCd9ZuhqJE-37AAAB
+[INFO] 16:12:25 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+NODE_ENV = development
+[ERROR] 16:12:29 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:12:36 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+NODE_ENV = development
+[ERROR] 16:12:39 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:12:48 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: C3yQme0EMZE6tIgzAAAB
+[INFO] 16:12:54 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+NODE_ENV = development
+[ERROR] 16:12:58 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:12:58 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 16:13:02 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:13:03 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 16:13:06 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:13:17 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 16:13:21 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:13:22 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+[ERROR] 16:13:25 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:20:24 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: b8f2EIJ886HV9Lp5AAAB
+[INFO] 16:20:34 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)
+a user connected: 77CverIrRLL8yEWiAAAB
+[INFO] 16:20:50 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+NODE_ENV = development
+[ERROR] 16:20:53 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:42:39 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\controller\toeicExamSessionController.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+NODE_ENV = development
+[ERROR] 16:42:45 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:43:03 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+NODE_ENV = development
+[ERROR] 16:43:07 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:43:16 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+NODE_ENV = development
+[ERROR] 16:43:19 Error: listen EADDRINUSE: address already in use :::3000
+[INFO] 16:46:41 Restarting: D:\EngLishApp\BE\EnglishAppTS\src\service\toeicExamSessionService.ts has been modified
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+NODE_ENV = development
+Server đang chạy ở port 3000 (development)

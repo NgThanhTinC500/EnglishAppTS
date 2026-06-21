@@ -92,11 +92,6 @@ vocabularyRouter.get(
   vocabularyController.getVocabularyPracticeItems
 );
 vocabularyRouter.post(
-  "/vocabulary/practice/check",
-  authController.protect,
-  vocabularyController.checkVocabularyPracticeAnswer
-);
-vocabularyRouter.post(
   "/vocabulary/practice-sessions",
   authController.protect,
   vocabularyController.startPracticeSession

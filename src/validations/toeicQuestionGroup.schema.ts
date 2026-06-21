@@ -25,8 +25,7 @@ export const createToeicQuestionGroupSchema = z.object({
     body: z.object({
         audioUrl: nullableStringSchema.optional(),
         audioDurationSeconds: nullableDurationSchema.optional(),
-        transcriptEn: nullableStringSchema.optional(),
-        transcriptVi: nullableStringSchema.optional(),
+        explanation: nullableStringSchema.optional(),
         images: z.array(imageSchema).optional(),
     }).strict(),
     params: examPartParamsSchema,
@@ -40,8 +39,7 @@ export const updateToeicQuestionGroupSchema = z.object({
     body: z.object({
         audioUrl: nullableStringSchema.optional(),
         audioDurationSeconds: nullableDurationSchema.optional(),
-        transcriptEn: nullableStringSchema.optional(),
-        transcriptVi: nullableStringSchema.optional(),
+        explanation: nullableStringSchema.optional(),
     }).strict().refine(
         (data) => Object.keys(data).length > 0,
         {

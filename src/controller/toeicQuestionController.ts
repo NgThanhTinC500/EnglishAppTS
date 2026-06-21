@@ -39,19 +39,9 @@ export class ToeicQuestionController {
         });
     });
 
-    update = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    updateWithOptions = catchAsync(async (req: Request, res: Response): Promise<void> => {
         const id = Number(req.params.id);
-        const question = await this.toeicQuestionService.update(id, req.body);
-
-        res.status(200).json({
-            status: "success",
-            data: { question },
-        });
-    });
-
-    setCorrectOption = catchAsync(async (req: Request, res: Response): Promise<void> => {
-        const id = Number(req.params.id);
-        const question = await this.toeicQuestionService.setCorrectOption(id, req.body.correctOptionId);
+        const question = await this.toeicQuestionService.updateWithOptions(id, req.body);
 
         res.status(200).json({
             status: "success",
