@@ -46,6 +46,10 @@ AppDataSource.initialize()
 
     // create express app
     const app = express();
+    // Trust first proxy (e.g., Render, Vercel, or other reverse proxies)
+    // so that express and express-rate-limit read the correct client IP
+    // from the X-Forwarded-For header.
+    app.set('trust proxy', 1);
     const server = createServer(app);
 
     initSocket(server);
