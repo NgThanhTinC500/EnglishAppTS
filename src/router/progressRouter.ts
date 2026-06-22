@@ -16,5 +16,10 @@ progressRouter.get(
     authController.protect,
     progressController.getVocabularyProgress,
 );
+progressRouter.get(
+    "/progress/listening",
+    authController.protect,
+    progressController.getListeningProgress,
+);
 
 export default progressRouter;

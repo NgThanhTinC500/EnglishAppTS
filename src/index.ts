@@ -25,7 +25,6 @@ import toeicExamSetRouter from "./router/toeicExamSetRouter";
 import toeicExamPartRouter from "./router/toeicExamPartRouter";
 import toeicQuestionGroupRouter from "./router/toeicQuestionGroupRouter";
 import toeicQuestionRouter from "./router/toeicQuestionRouter";
-import toeicQuestionOptionRouter from "./router/toeicQuestionOptionRouter";
 import toeicExamSessionRouter from "./router/toeicExamSessionRouter";
 import progressRouter from "./router/progressRouter";
 import forumRouter from "./router/forumRouter";
@@ -88,7 +87,6 @@ AppDataSource.initialize()
     app.use("/api/v1", toeicExamPartRouter);
     app.use("/api/v1", toeicQuestionGroupRouter);
     app.use("/api/v1", toeicQuestionRouter);
-    app.use("/api/v1", toeicQuestionOptionRouter);
     app.use("/api/v1", toeicExamSessionRouter);
     app.use("/api/v1", progressRouter);
     app.use("/api/forum", forumRouter);

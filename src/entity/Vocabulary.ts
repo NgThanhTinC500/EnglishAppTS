@@ -24,8 +24,20 @@ export class Vocabulary {
   @Column({ nullable: true })
   pronunciation!: string | null;
 
+  @Column({ type: "text", nullable: true })
+  audioUrl!: string | null;
+
+  @Column({ type: "text", nullable: true })
+  audioUsUrl!: string | null;
+
+  @Column({ type: "text", nullable: true })
+  audioUkUrl!: string | null;
+
   @Column({ nullable: true })
   example!: string | null;
+
+  @Column({ type: "text", nullable: true })
+  exampleVi!: string | null;
 
   @Column()
   vocabSetId!: number;

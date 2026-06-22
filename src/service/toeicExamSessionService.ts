@@ -7,6 +7,7 @@ import { ToeicQuestion } from "../entity/ToeicQuestion";
 import { ToeicQuestionOption } from "../entity/ToeicQuestionOption";
 import { ToeicSessionAnswer } from "../entity/ToeicSessionAnswer";
 import { AppError } from "../utils/appError";
+import { getToeicSectionScore } from "../constants/toeicScoreTable";
 import { ToeicExamSetService } from "./toeicExamSetService";
 
 const TOEIC_DURATION_SECONDS = 120 * 60;
@@ -36,18 +37,18 @@ export class ToeicExamSessionService {
 
     async expireOverdueSessions(now = new Date()) {
         const expiresBefore = new Date(now.getTime() - TOEIC_DURATION_SECONDS * 1000);
-        const result = await this.sessionRepository.update(
-            {
+        const overdueSessions = await this.sessionRepository.find({
+            where: {
                 status: ToeicSessionStatus.IN_PROGRESS,
                 startedAt: LessThanOrEqual(expiresBefore),
             },
-            {
-                status: ToeicSessionStatus.EXPIRED,
-                remainingSeconds: 0,
-            }
-        );
+        });
 
-        return result.affected ?? 0;
+        for (const session of overdueSessions) {
+            await this.autoSubmitExpiredSession(session);
+        }
+
+        return overdueSessions.length;
     }
 
     private ensurePositiveInteger(value: number, fieldName: string) {
@@ -76,7 +77,7 @@ export class ToeicExamSessionService {
         session.remainingSeconds = remainingSeconds;
 
         if (remainingSeconds <= 0) {
-            session.status = ToeicSessionStatus.EXPIRED;
+            return this.autoSubmitExpiredSession(session);
         }
 
         return this.sessionRepository.save(session);
@@ -89,7 +90,7 @@ export class ToeicExamSessionService {
             where: { id: sessionId, userId },
         });
 
-        if (!session) throw new AppError("TOEIC session not found", 404);
+        if (!session) throw new AppError("Không tìm thấy phiên thi", 404);
 
         return session;
     }
@@ -128,7 +129,7 @@ export class ToeicExamSessionService {
             },
         });
 
-        if (!examSet) throw new AppError("TOEIC exam set not found", 404);
+        if (!examSet) throw new AppError("Không tìm thấy bộ đề TOEIC", 404);
 
         return examSet;
     }
@@ -173,19 +174,19 @@ export class ToeicExamSessionService {
         };
     }
 
-    private scaleToeicScore(correctCount: number, maxCount: number) {
-        if (maxCount <= 0) return 0;
-        if (correctCount <= 0) return 0;
-
-        const rawScore = Math.round(((correctCount / maxCount) * 495) / 5) * 5;
-        return Math.min(495, Math.max(5, rawScore));
-    }
-
     private async getSessionAnswers(sessionId: number) {
         return this.sessionAnswerRepository.find({
             where: { sessionId },
             order: { questionId: "ASC" },
         });
+    }
+
+    private async autoSubmitExpiredSession(session: ToeicExamSession) {
+        const examSet = await this.getFullExamSetEntity(session.examSetId, false);
+        session.remainingSeconds = 0;
+
+        const submittedPayload = await this.buildSubmittedPayload(session, examSet);
+        return submittedPayload.session;
     }
 
     private formatDuration(seconds: number) {
@@ -244,15 +245,13 @@ export class ToeicExamSessionService {
         this.ensurePositiveInteger(selectedOptionId, "selectedOptionId");
 
         if (this.getRemainingSeconds(session) <= 0) {
-            session.remainingSeconds = 0;
-            session.status = ToeicSessionStatus.EXPIRED;
-            await this.sessionRepository.save(session);
-            throw new AppError("TOEIC session has expired", 400);
+            await this.autoSubmitExpiredSession(session);
+            throw new AppError("Bài thi của bạn đã kết thúc", 400);
         }
 
         const questionEntry = questionById.get(questionId);
         if (!questionEntry) {
-            throw new AppError("Question does not belong to this TOEIC session", 400);
+            throw new AppError("Câu hỏi không thuộc về phiên thi TOEIC này", 400);
         }
 
         const option = await this.optionRepository.findOne({
@@ -262,7 +261,7 @@ export class ToeicExamSessionService {
             },
         });
 
-        if (!option) throw new AppError("Selected option does not belong to this question", 400);
+        if (!option) throw new AppError("Chọn một đáp án thuộc về câu hỏi này", 400);
 
         await this.sessionAnswerRepository.upsert({
             sessionId: session.id,
@@ -303,8 +302,8 @@ export class ToeicExamSessionService {
             if (partNumber && READING_PARTS.has(partNumber)) readingCorrectCount++;
         });
 
-        const listeningScore = this.scaleToeicScore(listeningCorrectCount, 100);
-        const readingScore = this.scaleToeicScore(readingCorrectCount, 100);
+        const listeningScore = getToeicSectionScore("listening", listeningCorrectCount);
+        const readingScore = getToeicSectionScore("reading", readingCorrectCount);
 
         session.status = ToeicSessionStatus.SUBMITTED;
         session.submittedAt = session.submittedAt ?? new Date();
@@ -334,14 +333,14 @@ export class ToeicExamSessionService {
         };
     }
 
-    async start(userId: string, examSetId: number, restart = false) {
+    async start(userId: string, examSetId: number) {
         this.ensurePositiveInteger(examSetId, "examSetId");
 
         const examSet = await this.getFullExamSetEntity(examSetId, false);
         if (!examSet.isPublished) {
-            throw new AppError("TOEIC exam set is not published", 400);
+            throw new AppError("Bộ đề TOEIC chưa được công khai", 400);
         }
-        const existingSession = await this.sessionRepository.findOne({
+        let existingSession = await this.sessionRepository.findOne({
             where: {
                 userId,
                 examSetId,
@@ -349,19 +348,11 @@ export class ToeicExamSessionService {
             },
         });
 
-        if (restart && existingSession) {
-            existingSession.status = ToeicSessionStatus.EXPIRED;
-            existingSession.remainingSeconds = 0;
-            existingSession.submittedAt = new Date();
-            await this.sessionRepository.save(existingSession);
-        } else if (existingSession) {
-            await this.applyTimer(existingSession);
-            if (existingSession.status === ToeicSessionStatus.EXPIRED) {
-                throw new AppError("TOEIC session has expired", 400);
-            }
+        if (existingSession) {
+            existingSession = await this.applyTimer(existingSession);
         }
 
-        const reusableSession = !restart && existingSession?.status === ToeicSessionStatus.IN_PROGRESS
+        const reusableSession = existingSession?.status === ToeicSessionStatus.IN_PROGRESS
             ? existingSession
             : null;
 
@@ -416,7 +407,7 @@ export class ToeicExamSessionService {
         session = await this.applyTimer(session);
 
         if (session.status !== ToeicSessionStatus.IN_PROGRESS) {
-            throw new AppError("TOEIC session is not in progress", 400);
+            throw new AppError("Bài thi TOEIC không còn đang diễn ra", 400);
         }
 
         const examSet = await this.getFullExamSetEntity(session.examSetId, false);
@@ -441,11 +432,11 @@ export class ToeicExamSessionService {
         let session = await this.getSessionForUser(sessionId, userId);
 
         if (session.status === ToeicSessionStatus.SUBMITTED) {
-            throw new AppError("TOEIC session has already been submitted", 400);
+            throw new AppError("Bài thi TOEIC đã được nộp", 400);
         }
 
         if (session.status === ToeicSessionStatus.EXPIRED && session.submittedAt) {
-            throw new AppError("TOEIC session is not in progress", 400);
+            throw new AppError("Bài thi TOEIC không còn đang diễn ra", 400);
         }
 
         session = await this.applyTimer(session);
@@ -489,7 +480,7 @@ export class ToeicExamSessionService {
         }
 
         if (session.status !== ToeicSessionStatus.SUBMITTED) {
-            throw new AppError("TOEIC session has not been submitted", 400);
+            throw new AppError("Bài thi TOEIC chưa được nộp", 400);
         }
 
         const allQuestionIds = this.getQuestionIds(examSet.parts ?? []);
@@ -566,5 +557,3 @@ export class ToeicExamSessionService {
         }));
     }
 }
-
-

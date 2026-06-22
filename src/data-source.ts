@@ -1,8 +1,45 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 import "dotenv/config";
-// import { User } from "./entity/User";
+import { Attempt } from "./entity/Attempt";
+import { AttemptAnswer } from "./entity/AttemptAnswer";
+import { Blog } from "./entity/Blog";
+import { Comment } from "./entity/Comment";
+import { CommentLike } from "./entity/CommentLike";
+import { Course } from "./entity/Courses";
+import { Exam } from "./entity/Exam";
+import { ExamQuestion } from "./entity/ExamQuestion";
+import { ForumComment } from "./entity/ForumComment";
+import { ForumPost } from "./entity/ForumPost";
+import { ForumPostLike } from "./entity/ForumPostLike";
+import { Lecture } from "./entity/Lectures";
+import { Lesson } from "./entity/Lesson";
+import { Notification } from "./entity/Notification";
+import { Question } from "./entity/Question";
+import { QuestionOption } from "./entity/QuestionOption";
+import { ToeicCollection } from "./entity/ToeicCollection";
+import { ToeicExamPart } from "./entity/ToeicExamPart";
+import { ToeicExamSession } from "./entity/ToeicExamSession";
+import { ToeicExamSet } from "./entity/ToeicExamSet";
+import { ToeicQuestion } from "./entity/ToeicQuestion";
+import { ToeicQuestionGroup } from "./entity/ToeicQuestionGroup";
+import { ToeicQuestionGroupImage } from "./entity/ToeicQuestionGroupImage";
+import { ToeicQuestionOption } from "./entity/ToeicQuestionOption";
+import { ToeicSessionAnswer } from "./entity/ToeicSessionAnswer";
+import { Topic } from "./entity/Topic";
+import { User } from "./entity/User";
+import { UserVocabularyProgress } from "./entity/UserVocabularyProgress";
+import { Vocabulary } from "./entity/Vocabulary";
+import { VocabularyPracticeAnswer } from "./entity/VocabularyPracticeAnswer";
+import { VocabularyPracticeSession } from "./entity/VocabularyPracticeSession";
+import { VocabularySet } from "./entity/VocabularySet";
+
 const isProd = process.env.NODE_ENV === "production";
+const usesPostgresSsl =
+  process.env.POSTGRES_SSL === "true" ||
+  process.env.POSTGRES_SSL === "1" ||
+  isProd;
+
 export const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.POSTGRES_HOST,
@@ -10,11 +47,42 @@ export const AppDataSource = new DataSource({
   username: process.env.POSTGRES_USERNAME,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB,
-  synchronize: false, // nên tắt để dùng migrationx
+  synchronize: false, // keep disabled and use migrations
   logging: false, // display query in console , ex: SELECT * FROM ...
-  entities: isProd
-    ? ["build/entity/**/*.js"]
-    : ["src/entity/**/*.ts"],
+  entities: [
+    Attempt,
+    AttemptAnswer,
+    Blog,
+    Comment,
+    CommentLike,
+    Course,
+    Exam,
+    ExamQuestion,
+    ForumComment,
+    ForumPost,
+    ForumPostLike,
+    Lecture,
+    Lesson,
+    Notification,
+    Question,
+    QuestionOption,
+    ToeicCollection,
+    ToeicExamPart,
+    ToeicExamSession,
+    ToeicExamSet,
+    ToeicQuestion,
+    ToeicQuestionGroup,
+    ToeicQuestionGroupImage,
+    ToeicQuestionOption,
+    ToeicSessionAnswer,
+    Topic,
+    User,
+    UserVocabularyProgress,
+    Vocabulary,
+    VocabularyPracticeAnswer,
+    VocabularyPracticeSession,
+    VocabularySet,
+  ],
 
   migrations: isProd
     ? ["build/migration/**/*.js"]
@@ -23,12 +91,12 @@ export const AppDataSource = new DataSource({
   subscribers: isProd
     ? ["build/subscriber/**/*.js"]
     : ["src/subscriber/**/*.ts"],
-  ssl: !!process.env.POSTGRES_SSL,
+  ssl: usesPostgresSsl ? { rejectUnauthorized: false } : false,
 });
-// Quy trình làm việc chuẩn với Migration
-// 1. Tạo entity
-// 2. Tạo migration : npx typeorm-ts-node-commonjs migration:generate ./src/migration/InitDB -d src/data-source.ts 
-// 3. Chạy migration: npx typeorm-ts-node-commonjs migration:run -d src/data-source.ts
+// Standard migration workflow
+// 1. Create or update entity
+// 2. Generate migration: npx typeorm-ts-node-commonjs migration:generate ./src/migration/InitDB -d src/data-source.ts
+// 3. Run migration: npx typeorm-ts-node-commonjs migration:run -d src/data-source.ts
 
 
 

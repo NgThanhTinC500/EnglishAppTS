@@ -37,4 +37,15 @@ export class ProgressController {
             message: "Get vocabulary progress successfully",
         });
     });
+
+    getListeningProgress = catchAsync(async (req: Request, res: Response) => {
+        const userId = this.getUserId(req);
+        const progress = await this.progressService.getListeningProgress(userId);
+
+        res.status(200).json({
+            success: true,
+            data: progress,
+            message: "Get listening progress successfully",
+        });
+    });
 }

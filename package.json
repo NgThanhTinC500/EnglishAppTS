@@ -50,7 +50,7 @@
     "zod": "^4.3.6"
   },
   "scripts": {
-    "start:dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "start:dev": "cross-env TS_NODE_PREFER_TS_EXTS=true ts-node-dev --respawn --transpile-only src/index.ts",
     "start:prod": "cross-env NODE_ENV=production node build/index.js",
     "build": "rimraf build && tsc",
     "start": "npm run build && node build/index.js",

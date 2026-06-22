@@ -55,6 +55,17 @@ export class AuthController {
     next();
   });
 
+  optionalProtect = async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const currentUser = await this.authService.protect(req);
+      req.user = currentUser;
+    } catch {
+      req.user = undefined;
+    }
+
+    next();
+  };
+
   restrictTo = (...roles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
       this.authService.checkRole(req.user.role, roles);

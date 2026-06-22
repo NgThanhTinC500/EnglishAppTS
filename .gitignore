@@ -1,7 +1,12 @@
 .idea/
 .vscode/
+.env
 .env/
 node_modules/
 build/
 tmp/
 temp/
+
+# Compiled output belongs in build/, not src/.
+src/**/*.js
+src/**/*.js.map

@@ -28,9 +28,6 @@ export class Exam {
     @Column()
     title: string;
 
-    @Column({ type: "int", default: 60 })
-    duration: number;
-
     @Column({ type: "boolean", default: true })
     isActive: boolean;
     // đếm số câu hỏi theo đề

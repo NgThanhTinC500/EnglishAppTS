@@ -5,10 +5,12 @@ import {
     Index,
     JoinColumn,
     ManyToOne,
+    OneToMany,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from "typeorm";
 import { User } from "./User";
+import { ForumComment } from "./ForumComment";
 
 @Entity("posts")
 export class ForumPost {
@@ -22,6 +24,9 @@ export class ForumPost {
     @ManyToOne(() => User, { onDelete: "CASCADE" })
     @JoinColumn({ name: "user_id" })
     user!: User;
+
+    @OneToMany(() => ForumComment, (comment) => comment.post)
+    comments!: ForumComment[];
 
     @Column({ length: 255 })
     title!: string;
@@ -37,6 +42,9 @@ export class ForumPost {
 
     @Column({ name: "comments_count", type: "int", default: 0 })
     commentsCount!: number;
+
+    @Column({ name: "is_visible", type: "boolean", default: true })
+    isVisible!: boolean;
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date;

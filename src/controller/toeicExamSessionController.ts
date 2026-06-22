@@ -7,11 +7,9 @@ export class ToeicExamSessionController {
 
     start = catchAsync(async (req: Request, res: Response): Promise<void> => {
         const examSetId = Number(req.params.examSetId);
-        const restart = req.body?.restart === true;
         const result = await this.toeicExamSessionService.start(
             req.user.id,
-            examSetId,
-            restart
+            examSetId
         );
 
         res.status(201).json({

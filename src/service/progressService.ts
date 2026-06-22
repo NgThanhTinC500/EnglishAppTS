@@ -54,9 +54,6 @@ type VocabularyOverviewRow = {
 };
 
 type VocabularyTodayRow = {
-    flashcardSeenCount: number;
-    flashcardRememberedCount: number;
-    flashcardForgotCount: number;
     spellingAnsweredCount: number;
     spellingCorrectCount: number;
     spellingWrongCount: number;
@@ -65,6 +62,15 @@ type VocabularyTodayRow = {
 type VocabularyActivityDayRow = {
     activityDate: string;
     activityCount: number;
+};
+
+type ListeningProgressRow = {
+    totalLessons: number;
+    learnedLessons: number;
+    checkAnsweredCount: number;
+    checkCorrectCount: number;
+    dictationAnsweredCount: number;
+    dictationCorrectCount: number;
 };
 
 export class ProgressService {
@@ -377,6 +383,98 @@ export class ProgressService {
         };
     }
 
+    async getListeningProgress(userId: string) {
+        const rows = await AppDataSource.query(
+            `
+            WITH available_questions AS (
+                SELECT DISTINCT q.id, q.type
+                FROM questions q
+                INNER JOIN exam_questions eq
+                    ON eq."questionId" = q.id
+                INNER JOIN exams e
+                    ON e.id = eq."examId"
+                    AND e."isActive" = true
+                INNER JOIN topics t
+                    ON t.id = e."topicId"
+                    AND t.type = $2
+                WHERE q.category = $3
+                    AND q.type IN ($4, $5)
+            ),
+            user_answers AS (
+                SELECT aa."questionId", aa.result, aq.type
+                FROM attempt_answers aa
+                INNER JOIN attempts a
+                    ON a.id = aa."attemptId"
+                    AND a."userId" = $1
+                INNER JOIN available_questions aq
+                    ON aq.id = aa."questionId"
+            )
+            SELECT
+                (SELECT COUNT(*) FROM available_questions)::int AS "totalLessons",
+                (SELECT COUNT(DISTINCT ua."questionId") FROM user_answers ua)::int AS "learnedLessons",
+                COUNT(*) FILTER (WHERE ua.type = $4)::int AS "checkAnsweredCount",
+                COUNT(*) FILTER (
+                    WHERE ua.type = $4 AND ua.result = $6
+                )::int AS "checkCorrectCount",
+                COUNT(*) FILTER (WHERE ua.type = $5)::int AS "dictationAnsweredCount",
+                COUNT(*) FILTER (
+                    WHERE ua.type = $5 AND ua.result = $6
+                )::int AS "dictationCorrectCount"
+            FROM user_answers ua
+            `,
+            [
+                userId,
+                TopicType.LISTENING,
+                QuestionCategory.LISTENING,
+                QuestionType.SINGLE_CHOICE,
+                QuestionType.DICTATION,
+                AnswerResult.CORRECT,
+            ],
+        );
+
+        const row = rows[0] as ListeningProgressRow | undefined;
+        const totalLessons = this.toNumber(row?.totalLessons);
+        const learnedLessons = this.toNumber(row?.learnedLessons);
+        const checkAnsweredCount = this.toNumber(row?.checkAnsweredCount);
+        const checkCorrectCount = this.toNumber(row?.checkCorrectCount);
+        const dictationAnsweredCount = this.toNumber(row?.dictationAnsweredCount);
+        const dictationCorrectCount = this.toNumber(row?.dictationCorrectCount);
+        const checkAccuracy = this.getAccuracy(
+            checkCorrectCount,
+            checkAnsweredCount,
+        );
+        const dictationAccuracy = this.getAccuracy(
+            dictationCorrectCount,
+            dictationAnsweredCount,
+        );
+        const totalAnswered = checkAnsweredCount + dictationAnsweredCount;
+        const totalCorrect = checkCorrectCount + dictationCorrectCount;
+
+        return {
+            overview: {
+                learnedLessons,
+                totalLessons,
+                remainingLessons: Math.max(totalLessons - learnedLessons, 0),
+                completionPercent: totalLessons
+                    ? Math.round((learnedLessons / totalLessons) * 100)
+                    : 0,
+            },
+            accuracy: {
+                averagePercent: this.getAccuracy(totalCorrect, totalAnswered),
+                listeningCheck: {
+                    answeredCount: checkAnsweredCount,
+                    correctCount: checkCorrectCount,
+                    accuracyPercent: checkAccuracy,
+                },
+                dictation: {
+                    answeredCount: dictationAnsweredCount,
+                    correctCount: dictationCorrectCount,
+                    accuracyPercent: dictationAccuracy,
+                },
+            },
+        };
+    }
+
     private getVietnamDayRange(date = new Date()) {
         const formatter = new Intl.DateTimeFormat("en-CA", {
             timeZone: "Asia/Ho_Chi_Minh",
@@ -451,47 +549,31 @@ export class ProgressService {
         const rows = await AppDataSource.query(
             `
             SELECT
-                COUNT(vpa.id) FILTER (WHERE vpa.mode = $4)::int AS "flashcardSeenCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.result = $5)::int AS "flashcardRememberedCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.result = $6)::int AS "flashcardForgotCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.mode = $7)::int AS "spellingAnsweredCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.result = $8)::int AS "spellingCorrectCount",
-                COUNT(vpa.id) FILTER (WHERE vpa.result = $9)::int AS "spellingWrongCount"
+                COUNT(vpa.id)::int AS "spellingAnsweredCount",
+                COUNT(vpa.id) FILTER (WHERE vpa.result = $4)::int AS "spellingCorrectCount",
+                COUNT(vpa.id) FILTER (WHERE vpa.result = $5)::int AS "spellingWrongCount"
             FROM vocabulary_practice_answers vpa
             WHERE vpa."userId" = $1
                 AND vpa."answeredAt" >= $2
                 AND vpa."answeredAt" < $3
+                AND vpa.mode = $6
             `,
             [
                 userId,
                 today.from,
                 today.to,
-                VocabularyPracticeMode.FLASHCARD,
-                VocabularyPracticeResult.REMEMBERED,
-                VocabularyPracticeResult.FORGOT,
-                VocabularyPracticeMode.SPELLING,
                 VocabularyPracticeResult.CORRECT,
                 VocabularyPracticeResult.WRONG,
+                VocabularyPracticeMode.SPELLING,
             ],
         );
 
         const row = rows[0] as VocabularyTodayRow | undefined;
-        const flashcardSeenCount = this.toNumber(row?.flashcardSeenCount);
-        const flashcardRememberedCount = this.toNumber(row?.flashcardRememberedCount);
-        const flashcardForgotCount = this.toNumber(row?.flashcardForgotCount);
         const spellingAnsweredCount = this.toNumber(row?.spellingAnsweredCount);
         const spellingCorrectCount = this.toNumber(row?.spellingCorrectCount);
         const spellingWrongCount = this.toNumber(row?.spellingWrongCount);
 
         return {
-            flashcard: {
-                seenCount: flashcardSeenCount,
-                rememberedCount: flashcardRememberedCount,
-                forgotCount: flashcardForgotCount,
-                rememberedPercent: flashcardSeenCount
-                    ? Math.round((flashcardRememberedCount / flashcardSeenCount) * 100)
-                    : 0,
-            },
             spelling: {
                 answeredCount: spellingAnsweredCount,
                 correctCount: spellingCorrectCount,
@@ -511,10 +593,11 @@ export class ProgressService {
                 COUNT(vpa.id)::int AS "activityCount"
             FROM vocabulary_practice_answers vpa
             WHERE vpa."userId" = $1
+                AND vpa.mode = $2
             GROUP BY "activityDate"
             ORDER BY "activityDate" DESC
             `,
-            [userId],
+            [userId, VocabularyPracticeMode.SPELLING],
         );
 
         return (rows as VocabularyActivityDayRow[]).map((row) => ({
@@ -599,7 +682,7 @@ export class ProgressService {
             this.getVocabularyToday(userId),
             this.getVocabularyActivityDays(userId),
             AppDataSource.getRepository(VocabularyPracticeSession).findOne({
-                where: { userId },
+                where: { userId, mode: VocabularyPracticeMode.SPELLING },
                 order: { updatedAt: "DESC" },
             }),
         ]);

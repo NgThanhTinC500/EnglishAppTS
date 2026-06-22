@@ -48,11 +48,11 @@ export class CommentService {
             });
 
             if (!parent) {
-                throw new AppError("Khong tim thay comment cha", 404);
+                throw new AppError("Không tìm thấy comment cha", 404);
             }
 
             if (parent.parentCommentId) {
-                throw new AppError("Chi ho tro reply 2 cap", 400);
+                throw new AppError("Chỉ hỗ trợ reply 2 cấp", 400);
             }
         }
 
@@ -92,13 +92,53 @@ export class CommentService {
         return comments.map((comment) => this.toCommentResponse(comment, currentUserId));
     }
 
+    async updateComment(commentId: number, userId: string, content: string) {
+        const comment = await this.commentRepository.findOne({
+            where: { id: commentId },
+        });
+
+        if (!comment) {
+            throw new AppError("Không tìm thấy bình luận", 404);
+        }
+
+        if (comment.userId !== userId) {
+            throw new AppError("Bạn không có quyền sửa bình luận này", 403);
+        }
+
+        comment.content = content.trim();
+        await this.commentRepository.save(comment);
+
+        return this.getCommentById(commentId, userId);
+    }
+
+    async deleteComment(commentId: number, userId: string) {
+        const comment = await this.commentRepository.findOne({
+            where: { id: commentId },
+        });
+
+        if (!comment) {
+            throw new AppError("Không tìm thấy bình luận", 404);
+        }
+
+        if (comment.userId !== userId) {
+            throw new AppError("Bạn không có quyền xóa bình luận này", 403);
+        }
+
+        await this.commentRepository.remove(comment);
+
+        return {
+            id: commentId,
+            lectureId: comment.lectureId,
+        };
+    }
+
     async toggleLike(commentId: number, userId: string) {
         const comment = await this.commentRepository.findOne({
             where: { id: commentId },
         });
 
         if (!comment) {
-            throw new AppError("Comment not found", 404);
+            throw new AppError("Không tìm thấy bình luận", 404);
         }
 
         const existingLike = await this.likeRepository.findOne({

@@ -1,4 +1,4 @@
-import { EntityManager, Repository } from "typeorm";
+import { Brackets, EntityManager, Repository } from "typeorm";
 import { AppDataSource } from "../data-source";
 import { ForumComment } from "../entity/ForumComment";
 import { ForumPost } from "../entity/ForumPost";
@@ -12,11 +12,16 @@ type PaginationInput = {
     limit?: number;
 };
 
+type AdminPostQueryInput = PaginationInput & {
+    search?: string;
+};
+
 type CreatePostInput = {
     title?: string;
     content?: string;
-    tags?: unknown;
 };
+
+type UpdatePostInput = CreatePostInput;
 
 export class ForumService {
     private postRepository: Repository<ForumPost>;
@@ -40,30 +45,15 @@ export class ForumService {
         };
     }
 
-    private normalizeTags(tags: unknown): string[] {
-        if (tags === undefined || tags === null) return [];
-
-        if (!Array.isArray(tags)) {
-            throw new AppError("tags phải là mảng chuỗi", 400);
-        }
-
-        const normalizedTags = tags
-            .map((tag) => String(tag).trim())
-            .filter(Boolean)
-            .slice(0, 10);
-
-        return Array.from(new Set(normalizedTags));
-    }
-
     private toPostResponse(post: ForumPost, likedByMe = false) {
         return {
             id: post.id,
             userId: post.userId,
             title: post.title,
             content: post.content,
-            tags: post.tags,
             likesCount: post.likesCount,
             commentsCount: post.commentsCount,
+            isVisible: post.isVisible,
             createdAt: post.createdAt,
             updatedAt: post.updatedAt,
             likedByMe,
@@ -95,9 +85,26 @@ export class ForumService {
         };
     }
 
+    private validatePostLengths(title?: string, content?: string) {
+        if (title && title.length > 255) {
+            throw new AppError("Tiêu đề bài viết không được vượt quá 255 ký tự", 400);
+        }
+
+        if (content && content.length > 20000) {
+            throw new AppError("Nội dung bài viết không được vượt quá 20000 ký tự", 400);
+        }
+    }
+
+    private validateCommentLength(content?: string) {
+        if (content && content.length > 2000) {
+            throw new AppError("Nội dung bình luận không được vượt quá 2000 ký tự", 400);
+        }
+    }
+
     async createPost(userId: string, input: CreatePostInput) {
         const title = input.title?.trim();
         const content = input.content?.trim();
+        this.validatePostLengths(title, content);
 
         if (!title) {
             throw new AppError("Tiêu đề bài viết không được để trống", 400);
@@ -111,16 +118,69 @@ export class ForumService {
             userId,
             title,
             content,
-            tags: this.normalizeTags(input.tags),
+            tags: [],
         });
 
         const savedPost = await this.postRepository.save(post);
         return this.getPostById(savedPost.id, userId);
     }
 
+    async updatePost(postId: number, userId: string, input: UpdatePostInput) {
+        const title = input.title?.trim();
+        const content = input.content?.trim();
+        this.validatePostLengths(title, content);
+
+        if (!title) {
+            throw new AppError("Tiêu đề bài viết không được để trống", 400);
+        }
+
+        if (!content) {
+            throw new AppError("Nội dung bài viết không được để trống", 400);
+        }
+
+        const post = await this.postRepository.findOne({
+            where: { id: postId },
+            relations: { user: true },
+        });
+
+        if (!post) {
+            throw new AppError("Không tìm thấy bài viết", 404);
+        }
+
+        if (post.userId !== userId) {
+            throw new AppError("Bạn không có quyền sửa bài viết này", 403);
+        }
+
+        post.title = title;
+        post.content = content;
+        const savedPost = await this.postRepository.save(post);
+        const likedByMe = await this.likeRepository.exists({
+            where: { postId, userId },
+        });
+        return this.toPostResponse(savedPost, likedByMe);
+    }
+
+    async deletePost(postId: number, userId: string) {
+        const post = await this.postRepository.findOne({
+            where: { id: postId },
+        });
+
+        if (!post) {
+            throw new AppError("Không tìm thấy bài viết", 404);
+        }
+
+        if (post.userId !== userId) {
+            throw new AppError("Bạn không có quyền xóa bài viết này", 403);
+        }
+
+        await this.postRepository.remove(post);
+        return { id: postId };
+    }
+
     async getPosts(input: PaginationInput, currentUserId?: string) {
         const { page, limit, skip } = this.getPagination(input);
         const [posts, total] = await this.postRepository.findAndCount({
+            where: { isVisible: true },
             relations: { user: true },
             order: { createdAt: "DESC" },
             skip,
@@ -142,7 +202,7 @@ export class ForumService {
 
     async getPostById(postId: number, currentUserId?: string) {
         const post = await this.postRepository.findOne({
-            where: { id: postId },
+            where: { id: postId, isVisible: true },
             relations: { user: true },
         });
 
@@ -158,7 +218,9 @@ export class ForumService {
     }
 
     async likePost(postId: number, userId: string) {
-        const post = await this.postRepository.findOne({ where: { id: postId } });
+        const post = await this.postRepository.findOne({
+            where: { id: postId, isVisible: true },
+        });
 
         if (!post) {
             throw new AppError("Không tìm thấy bài viết", 404);
@@ -192,6 +254,7 @@ export class ForumService {
 
     async createComment(postId: number, userId: string, rawContent?: string) {
         const content = rawContent?.trim();
+        this.validateCommentLength(content);
 
         if (!content) {
             throw new AppError("Nội dung bình luận không được để trống", 400);
@@ -199,7 +262,7 @@ export class ForumService {
 
         const result = await AppDataSource.transaction(async (manager: EntityManager) => {
             const post = await manager.findOne(ForumPost, {
-                where: { id: postId },
+                where: { id: postId, isVisible: true },
                 relations: { user: true },
             });
 
@@ -255,8 +318,64 @@ export class ForumService {
         return this.toCommentResponse(result.comment);
     }
 
+    async updateComment(commentId: number, userId: string, rawContent?: string) {
+        const content = rawContent?.trim();
+        this.validateCommentLength(content);
+
+        if (!content) {
+            throw new AppError("Nội dung bình luận không được để trống", 400);
+        }
+
+        const comment = await this.commentRepository.findOne({
+            where: { id: commentId },
+            relations: { user: true },
+        });
+
+        if (!comment) {
+            throw new AppError("Không tìm thấy bình luận", 404);
+        }
+
+        if (comment.userId !== userId) {
+            throw new AppError("Bạn không có quyền sửa bình luận này", 403);
+        }
+
+        comment.content = content;
+        const savedComment = await this.commentRepository.save(comment);
+        return this.toCommentResponse(savedComment);
+    }
+
+    async deleteComment(commentId: number, userId: string) {
+        return AppDataSource.transaction(async (manager: EntityManager) => {
+            const comment = await manager.findOne(ForumComment, {
+                where: { id: commentId },
+            });
+
+            if (!comment) {
+                throw new AppError("Không tìm thấy bình luận", 404);
+            }
+
+            if (comment.userId !== userId) {
+                throw new AppError("Bạn không có quyền xóa bình luận này", 403);
+            }
+
+            await manager.remove(ForumComment, comment);
+            await manager
+                .createQueryBuilder()
+                .update(ForumPost)
+                .set({
+                    commentsCount: () => 'GREATEST("comments_count" - 1, 0)',
+                })
+                .where("id = :postId", { postId: comment.postId })
+                .execute();
+
+            return { id: commentId, postId: comment.postId };
+        });
+    }
+
     async getComments(postId: number, input: PaginationInput) {
-        const postExists = await this.postRepository.exists({ where: { id: postId } });
+        const postExists = await this.postRepository.exists({
+            where: { id: postId, isVisible: true },
+        });
 
         if (!postExists) {
             throw new AppError("Không tìm thấy bài viết", 404);
@@ -295,5 +414,81 @@ export class ForumService {
             .getRawMany<{ postId: number }>();
 
         return new Set(likes.map((like) => Number(like.postId)));
+    }
+
+    async getAdminPosts(input: AdminPostQueryInput) {
+        const { page, limit, skip } = this.getPagination(input);
+        const search = input.search?.trim().slice(0, 100) ?? "";
+        const query = this.postRepository
+            .createQueryBuilder("post")
+            .leftJoinAndSelect("post.user", "user");
+
+        if (search) {
+            query.andWhere(
+                new Brackets((builder) => {
+                    builder
+                        .where("post.title ILIKE :search", {
+                            search: `%${search}%`,
+                        })
+                        .orWhere("user.name ILIKE :search", {
+                            search: `%${search}%`,
+                        });
+                })
+            );
+        }
+
+        const [posts, total] = await query
+            .clone()
+            .orderBy("post.createdAt", "DESC")
+            .skip(skip)
+            .take(limit)
+            .getManyAndCount();
+
+        const stats = await query
+            .clone()
+            .select("COUNT(post.id)", "total")
+            .addSelect(
+                `COUNT(post.id) FILTER (WHERE post.isVisible = true)`,
+                "visible"
+            )
+            .addSelect(
+                `COUNT(post.id) FILTER (WHERE post.isVisible = false)`,
+                "hidden"
+            )
+            .getRawOne<{ total: string; visible: string; hidden: string }>();
+
+        return {
+            posts: posts.map((post) => this.toPostResponse(post)),
+            stats: {
+                total: Number(stats?.total ?? 0),
+                visible: Number(stats?.visible ?? 0),
+                hidden: Number(stats?.hidden ?? 0),
+            },
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async setPostVisibility(postId: number, isVisible: unknown) {
+        if (typeof isVisible !== "boolean") {
+            throw new AppError("isVisible phải là kiểu boolean", 400);
+        }
+
+        const post = await this.postRepository.findOne({
+            where: { id: postId },
+            relations: { user: true },
+        });
+
+        if (!post) {
+            throw new AppError("Không tìm thấy bài viết", 404);
+        }
+
+        post.isVisible = isVisible;
+        const savedPost = await this.postRepository.save(post);
+        return this.toPostResponse(savedPost);
     }
 }

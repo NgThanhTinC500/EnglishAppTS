@@ -106,7 +106,7 @@ export class ToeicExamSetService {
             },
         });
 
-        if (!examSet) throw new AppError("Toeic exam set not found", 404);
+        if (!examSet) throw new AppError("Không tìm thấy bộ đề toeic", 404);
 
         return examSet;
     }
@@ -142,8 +142,7 @@ export class ToeicExamSetService {
             id: option.id,
             questionId: option.questionId,
             optionLabel: option.optionLabel,
-            contentEn: option.contentEn,
-            contentVi: option.contentVi,
+            content: option.content,
             ...(includeCorrect ? { isCorrect: option.isCorrect } : {}),
         })) ?? [];
 
@@ -151,9 +150,8 @@ export class ToeicExamSetService {
             id: question.id,
             questionGroupId: question.questionGroupId,
             questionNumber: question.questionNumber,
-            contentEn: question.contentEn,
-            contentVi: question.contentVi,
-            explanationVi: includeCorrect ? question.explanationVi : undefined,
+            content: question.content,
+            explanation: includeCorrect ? question.explanation : undefined,
             correctOptionId: includeCorrect ? question.correctOptionId : undefined,
             options,
         };
@@ -181,8 +179,7 @@ export class ToeicExamSetService {
                     groupOrder: group.groupOrder,
                     audioUrl: group.audioUrl,
                     audioDurationSeconds: group.audioDurationSeconds,
-                    transcriptEn: includeCorrect ? group.transcriptEn : undefined,
-                    transcriptVi: includeCorrect ? group.transcriptVi : undefined,
+                    explanation: includeCorrect ? group.explanation : undefined,
                     images: group.images?.map((image) => ({
                         id: image.id,
                         imageOrder: image.imageOrder,
@@ -303,7 +300,7 @@ export class ToeicExamSetService {
             where: { id, collectionId },
         });
 
-        if (!examSet) throw new AppError("Toeic exam set not found", 404);
+        if (!examSet) throw new AppError("Không tìm thấy bộ đề toeic", 404);
 
         return examSet;
     }
@@ -325,7 +322,7 @@ export class ToeicExamSetService {
             const validation = this.validateExamSetEntity(examSet);
             if (!validation.isValid) {
                 throw new AppError(
-                    `Cannot publish invalid TOEIC exam set: ${validation.issues.join("; ")}`,
+                    `Không thể công khai bộ đề không hợp lệ: ${validation.issues.join("; ")}`,
                     400
                 );
             }
@@ -342,7 +339,7 @@ export class ToeicExamSetService {
         await this.ensureCollectionExists(data.collectionId);
 
         if (!data.title?.trim()) {
-            throw new AppError("Title is required", 400);
+            throw new AppError("Phải có tiêu đề cho bộ đề", 400);
         }
 
         return AppDataSource.transaction(async (manager) => {
@@ -386,10 +383,10 @@ export class ToeicExamSetService {
             where: { id, collectionId },
         });
 
-        if (!examSet) throw new AppError("Toeic exam set not found", 404);
+        if (!examSet) throw new AppError("Không tìm thấy bộ đề toeic", 404);
 
         if (data.title !== undefined) {
-            if (!data.title.trim()) throw new AppError("Title is required", 400);
+            if (!data.title.trim()) throw new AppError("Phải có tiêu đề cho bộ đề", 400);
             examSet.title = data.title.trim();
         }
 
@@ -408,9 +405,8 @@ export class ToeicExamSetService {
             where: { id, collectionId },
         });
 
-        if (!examSet) throw new AppError("Toeic exam set not found", 404);
+        if (!examSet) throw new AppError("Không tìm thấy bộ đề toeic", 404);
 
         await this.toeicExamSetRepository.softDelete(id);
     }
 }
-

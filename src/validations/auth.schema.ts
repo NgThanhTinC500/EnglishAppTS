@@ -5,25 +5,25 @@ export const signupSchema = z.object({
         name: z
             .string()
             .trim()
-            .min(6, "Name must be at least 6 characters")
-            .max(50, "Name must be at most 50 characters"),
+            .min(6, "Tên phải có ít nhất 6 ký tự")
+            .max(50, "Tên không được vượt quá 50 ký tự"),
 
         email: z
             .string()
             .trim()
             .toLowerCase()
-            .email("Email is not valid"),
+            .email("Email không hợp lệ"),
 
         password: z
             .string()
-            .min(8, "Password must be at least 8 characters"),
+            .min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
 
         passwordConfirm: z.string(),
     }).strict().refine(
         (data) => data.password === data.passwordConfirm,
         {
             path: ["passwordConfirm"],
-            message: "Passwords do not match",
+            message: "Mật khẩu xác nhận không khớp",
         }
     ),
 });
@@ -34,11 +34,11 @@ export const loginSchema = z.object({
             .string()
             .trim()
             .toLowerCase()
-            .email("Email is not valid"),
+            .email("Email không hợp lệ"),
 
         password: z
             .string()
-            .min(1, "Password is required"),
+            .min(1, "Mật khẩu là bắt buộc"),
     }).strict(),
 });
 
@@ -48,7 +48,7 @@ export const forgotPasswordSchema = z.object({
             .string()
             .trim()
             .toLowerCase()
-            .email("Email is not valid"),
+            .email("Email không hợp lệ"),
     }).strict(),
 });
 
@@ -56,13 +56,13 @@ export const resetPasswordSchema = z.object({
     body: z.object({
         password: z
             .string()
-            .min(8, "Password must be at least 8 characters"),
+            .min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
         passwordConfirm: z.string(),
     }).strict().refine(
         (data) => data.password === data.passwordConfirm,
         {
             path: ["passwordConfirm"],
-            message: "Passwords do not match",
+            message: "Mật khẩu xác nhận không khớp",
         }
     ),
 });
@@ -71,16 +71,16 @@ export const updatePasswordSchema = z.object({
     body: z.object({
         currentPassword: z
             .string()
-            .min(1, "Current password is required"),
+            .min(1, "Mật khẩu hiện tại là bắt buộc"),
         newPassword: z
             .string()
-            .min(8, "Password must be at least 8 characters"),
+            .min(8, "Mật khẩu mới phải có ít nhất 8 ký tự"),
         passwordConfirm: z.string(),
     }).strict().refine(
         (data) => data.newPassword === data.passwordConfirm,
         {
             path: ["passwordConfirm"],
-            message: "Passwords do not match",
+            message: "Mật khẩu xác nhận không khớp",
         }
     ),
 });

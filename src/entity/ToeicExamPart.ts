@@ -25,6 +25,7 @@ export class ToeicExamPart {
     @ManyToOne(() => ToeicExamSet, (examSet) => examSet.parts, {
         onDelete: "CASCADE",
     })
+
     @JoinColumn({ name: "examSetId" })
     examSet: ToeicExamSet;
 
@@ -36,7 +37,6 @@ export class ToeicExamPart {
 
     @Column({ type: "int", nullable: true })
     durationSeconds: number | null;
-
 
     @OneToMany(() => ToeicQuestionGroup, (group) => group.examPart)
     questionGroups: ToeicQuestionGroup[];

@@ -25,6 +25,13 @@ export class ExamService {
             .filter(Boolean);
     }
 
+    /*
+    ẩn đáp án dictation trong transcript bằng cách thay đáp án đúng thành [BLANK].
+        transcript = "The boy is drinking coffee"
+        correctAnswers = ["boy", "drinking", "coffee"]
+        return
+        The [BLANK] is [BLANK] [BLANK]
+    */
     private maskTranscript(transcript: string | null, correctAnswers: string[]) {
         if (!transcript) return transcript;
         if (transcript.includes("[BLANK]")) return transcript;
@@ -39,7 +46,7 @@ export class ExamService {
         }, transcript);
     }
 
-    private toSafeQuestion(question: Question) {
+    private toAdminQuestion(question: Question) {
         const correctAnswers = this.splitDictationAnswers(question.dictationAnswer);
 
         return {
@@ -50,7 +57,6 @@ export class ExamService {
             explanation: question.explanation,
             audioUrl: question.audioUrl,
             audioFileName: question.audioFileName,
-            audioDuration: question.audioDuration,
             transcript: question.showTranscript
                 ? question.transcript
                 : this.maskTranscript(question.transcript, correctAnswers),
@@ -68,23 +74,19 @@ export class ExamService {
         };
     }
 
-    async createExam(topicId: number, examData: Pick<Exam, "title" | "duration">) {
+    async createExam(topicId: number, examData: Pick<Exam, "title">) {
         this.ensurePositiveInteger(topicId, "topicId");
 
         const title = String(examData.title ?? "").trim();
-        if (!title) throw new AppError("Exam title is required", 400);
-
-        const duration = Number(examData.duration);
-        this.ensurePositiveInteger(duration, "duration");
+        if (!title) throw new AppError("Bắt buộc có tiêu đề đề thi", 400);
 
         const topic = await this.topicRepository.findOne({
             where: { id: topicId }
         });
-        if (!topic) throw new AppError("Topic not found", 404);
+        if (!topic) throw new AppError("Không tìm thấy đề tài", 404);
 
         const exam = this.examRepository.create({
             title,
-            duration,
             topicId
         });
 
@@ -115,7 +117,7 @@ export class ExamService {
             }
         });
 
-        if (!exam) throw new AppError("Exam not found", 404);
+        if (!exam) throw new AppError("Không tìm thấy đề thi", 404);
 
         const { examQuestions, ...examInfo } = exam;
 
@@ -126,7 +128,7 @@ export class ExamService {
                 .sort((first, second) => first.orderIndex - second.orderIndex)
                 .map((examQuestion) => ({
                     orderIndex: examQuestion.orderIndex,
-                    ...this.toSafeQuestion(examQuestion.question)
+                    ...this.toAdminQuestion(examQuestion.question)
                 }))
         };
     }
@@ -138,7 +140,7 @@ export class ExamService {
         const exam = await this.examRepository.findOne({
             where: { topicId, id: examId }
         });
-        if (!exam) throw new AppError("Exam not found", 404);
+        if (!exam) throw new AppError("Không tìm thấy đề thi", 404);
 
         exam.isActive = !exam.isActive;
 
@@ -157,11 +159,10 @@ export class ExamService {
             where: { topicId, id: examId }
         });
 
-        if (!exam) throw new AppError("Exam not found", 404);
+        if (!exam) throw new AppError("Không tìm thấy đề thi", 404);
 
         const allowedFields: (keyof Exam)[] = [
             "title",
-            "duration",
             "isActive"
         ];
 
@@ -175,14 +176,8 @@ export class ExamService {
 
         if ("title" in filteredData) {
             const title = String(filteredData.title ?? "").trim();
-            if (!title) throw new AppError("Exam title is required", 400);
+            if (!title) throw new AppError("Bắt buộc có tiêu đề đề thi", 400);
             filteredData.title = title;
-        }
-
-        if ("duration" in filteredData) {
-            const duration = Number(filteredData.duration);
-            this.ensurePositiveInteger(duration, "duration");
-            filteredData.duration = duration;
         }
 
         Object.assign(exam, filteredData);

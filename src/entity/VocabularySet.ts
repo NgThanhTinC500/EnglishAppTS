@@ -20,8 +20,8 @@ export class VocabularySet {
   @Column({ type: "varchar", length: 255 })
   name!: string;
 
-  @Column({ nullable: true })
-  tag!: string | null;
+  @Column()
+  tag!: string;
 
   @Column()
   userId!: string;
@@ -29,6 +29,7 @@ export class VocabularySet {
   @ManyToOne(() => User, (user) => user.vocabularySets, {
     onDelete: "CASCADE",
   })
+
   @JoinColumn({ name: "userId" })
   user!: User;
 

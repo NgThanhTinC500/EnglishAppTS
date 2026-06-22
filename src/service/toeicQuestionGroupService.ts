@@ -14,8 +14,7 @@ interface CreateGroupImageInput {
 interface CreateGroupInput {
     audioUrl?: string | null;
     audioDurationSeconds?: number | null;
-    transcriptEn?: string | null;
-    transcriptVi?: string | null;
+    explanation?: string | null;
     images?: CreateGroupImageInput[];
 }
 
@@ -155,8 +154,7 @@ export class ToeicQuestionGroupService {
                 groupOrder,
                 audioUrl: data.audioUrl ?? null,
                 audioDurationSeconds: data.audioDurationSeconds ?? null,
-                transcriptEn: data.transcriptEn ?? null,
-                transcriptVi: data.transcriptVi ?? null,
+                explanation: data.explanation ?? null,
             });
 
             const savedGroup = await transactionalEntityManager.save(group);
@@ -202,12 +200,8 @@ export class ToeicQuestionGroupService {
             group.audioDurationSeconds = data.audioDurationSeconds;
         }
 
-        if (data.transcriptEn !== undefined) {
-            group.transcriptEn = data.transcriptEn;
-        }
-
-        if (data.transcriptVi !== undefined) {
-            group.transcriptVi = data.transcriptVi;
+        if (data.explanation !== undefined) {
+            group.explanation = data.explanation;
         }
 
         return this.toeicQuestionGroupRepository.save(group);

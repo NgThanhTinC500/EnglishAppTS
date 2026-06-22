@@ -1,6 +1,6 @@
 import { UpdateResult } from "typeorm";
 import { FindOptionsWhere } from "typeorm";
-import { User } from "../entity/User";
+import { User, UserRole } from "../entity/User";
 import { AppDataSource } from "../data-source";
 import { AppError } from "../utils/appError";
 
@@ -53,6 +53,22 @@ export class UserService {
   async deleteUser(id: string) {
     await this.userRepository.update(id, { isActive: false });
     return { message: "User deleted successfully" };
+  }
+
+  async toggleUserRole(id: string, currentAdminId: string) {
+    if (id === currentAdminId) {
+      throw new AppError("You cannot change your own role", 400);
+    }
+
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new AppError("No user found with that ID", 404);
+    }
+
+    user.role =
+      user.role === UserRole.ADMIN ? UserRole.USER : UserRole.ADMIN;
+
+    return this.userRepository.save(user);
   }
 
   async findByEmail(email: string) {

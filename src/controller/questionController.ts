@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { QuestionService } from "../service/questionService";
 import catchAsync from "../utils/catchAsync";
+import { AppError } from "../utils/appError";
 
 export class QuestionController {
     private questionService = new QuestionService();
@@ -9,7 +10,15 @@ export class QuestionController {
         const payload: Record<string, unknown> = { ...req.body };
 
         if (typeof payload.options === "string") {
-            payload.options = JSON.parse(payload.options);
+            try {
+                payload.options = JSON.parse(payload.options);
+            } catch {
+                throw new AppError("Options không hợp lệ", 400);
+            }
+        }
+
+        if (payload.options !== undefined && !Array.isArray(payload.options)) {
+            throw new AppError("Options phải là một mảng", 400);
         }
 
         if (typeof payload.showTranscript === "string") {

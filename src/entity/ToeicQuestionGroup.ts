@@ -26,6 +26,7 @@ export class ToeicQuestionGroup {
     @ManyToOne(() => ToeicExamPart, (part) => part.questionGroups, {
         onDelete: "CASCADE",
     })
+
     @JoinColumn({ name: "examPartId" })
     examPart: ToeicExamPart;
 
@@ -39,10 +40,7 @@ export class ToeicQuestionGroup {
     audioDurationSeconds: number | null;
 
     @Column({ type: "text", nullable: true })
-    transcriptEn: string | null;
-
-    @Column({ type: "text", nullable: true })
-    transcriptVi: string | null;
+    explanation: string | null;
 
     @OneToMany(() => ToeicQuestionGroupImage, (image) => image.questionGroup)
     images: ToeicQuestionGroupImage[];

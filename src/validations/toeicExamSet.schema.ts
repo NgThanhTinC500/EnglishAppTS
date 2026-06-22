@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 const collectionParamsSchema = z.object({
-    collectionId: z.coerce.number().int().positive("collectionId must be a positive integer"),
+    collectionId: z.coerce.number().int().positive("collectionId phải là số nguyên dương"),
 }).strict();
 
 const examSetParamsSchema = collectionParamsSchema.extend({
-    id: z.coerce.number().int().positive("id must be a positive integer"),
+    id: z.coerce.number().int().positive("id phải là số nguyên dương"),
 });
 
 export const getToeicExamSetsSchema = z.object({
@@ -21,8 +21,8 @@ export const createToeicExamSetSchema = z.object({
         title: z
             .string()
             .trim()
-            .min(1, "Title is required")
-            .max(255, "Title must be at most 255 characters"),
+            .min(1, "Tiêu đề là bắt buộc")
+            .max(255, "Tiêu đề không được vượt quá 255 ký tự"),
         isPublished: z.boolean().default(false),
     }).strict(),
     params: collectionParamsSchema,
@@ -33,14 +33,14 @@ export const updateToeicExamSetSchema = z.object({
         title: z
             .string()
             .trim()
-            .min(1, "Title is required")
-            .max(255, "Title must be at most 255 characters")
+            .min(1, "Tiêu đề là bắt buộc")
+            .max(255, "Tiêu đề không được vượt quá 255 ký tự")
             .optional(),
         isPublished: z.boolean().optional(),
     }).strict().refine(
         (data) => Object.keys(data).length > 0,
         {
-            message: "At least one field is required",
+            message: "Cần cung cấp ít nhất một trường để cập nhật",
         }
     ),
     params: examSetParamsSchema,

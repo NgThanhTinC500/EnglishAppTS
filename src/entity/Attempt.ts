@@ -12,6 +12,12 @@ export enum AttemptMode {
   EXAM = 'exam',
 }
 
+export enum AttemptPracticeMode {
+  GRAMMAR = 'grammar',
+  LISTENING_CHECK = 'listening_check',
+  DICTATION = 'dictation',
+}
+
 export enum AttemptStatus {
   IN_PROGRESS = 'in_progress',
   SUBMITTED = 'submitted',
@@ -33,6 +39,13 @@ export class Attempt {
 
   @Column({ type: 'enum', enum: AttemptMode })
   mode: AttemptMode;
+
+  @Column({
+    type: 'enum',
+    enum: AttemptPracticeMode,
+    default: AttemptPracticeMode.GRAMMAR,
+  })
+  practiceMode: AttemptPracticeMode;
 
   @Column({ nullable: true })
   examId: number | null;

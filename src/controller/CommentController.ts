@@ -77,6 +77,80 @@ export class CommentController {
         });
     })
 
+    updateComment = catchAsync(async (req: Request, res: Response) => {
+        const commentId = Number(req.params.commentId);
+        const content = req.body.content?.trim();
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Ban chua dang nhap",
+            });
+        }
+
+        if (!Number.isInteger(commentId) || commentId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "commentId khong hop le",
+            });
+        }
+
+        if (!content) {
+            return res.status(400).json({
+                success: false,
+                message: "Noi dung binh luan khong duoc de trong",
+            });
+        }
+
+        if (content.length > 255) {
+            return res.status(400).json({
+                success: false,
+                message: "Noi dung binh luan khong duoc vuot qua 255 ky tu",
+            });
+        }
+
+        const comment = await this.commentService.updateComment(
+            commentId,
+            userId,
+            content
+        );
+
+        res.status(200).json({
+            success: true,
+            data: comment,
+        });
+    })
+
+    deleteComment = catchAsync(async (req: Request, res: Response) => {
+        const commentId = Number(req.params.commentId);
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Ban chua dang nhap",
+            });
+        }
+
+        if (!Number.isInteger(commentId) || commentId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "commentId khong hop le",
+            });
+        }
+
+        const deletedComment = await this.commentService.deleteComment(
+            commentId,
+            userId
+        );
+
+        res.status(200).json({
+            success: true,
+            data: deletedComment,
+        });
+    })
+
     toggleLike = catchAsync(async (req: Request, res: Response) => {
         const commentId = Number(req.params.commentId);
         const userId = req.user?.id;
