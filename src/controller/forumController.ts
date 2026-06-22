@@ -104,7 +104,12 @@ export class ForumController {
 
     createComment = catchAsync(async (req: Request, res: Response) => {
         const postId = this.parseId(req.params.id, "postId");
-        const comment = await this.forumService.createComment(postId, req.user.id, req.body.content);
+        const comment = await this.forumService.createComment(
+            postId,
+            req.user.id,
+            req.body.content,
+            req.body.parentCommentId
+        );
 
         res.status(201).json({
             status: "success",

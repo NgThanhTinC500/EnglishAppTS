@@ -71,6 +71,7 @@ export class ForumService {
         return {
             id: comment.id,
             postId: comment.postId,
+            parentCommentId: comment.parentCommentId,
             userId: comment.userId,
             content: comment.content,
             createdAt: comment.createdAt,
@@ -99,6 +100,20 @@ export class ForumService {
         if (content && content.length > 2000) {
             throw new AppError("Nội dung bình luận không được vượt quá 2000 ký tự", 400);
         }
+    }
+
+    private parseParentCommentId(parentCommentId: unknown) {
+        if (parentCommentId === undefined || parentCommentId === null || parentCommentId === "") {
+            return null;
+        }
+
+        const parsedId = Number(parentCommentId);
+
+        if (!Number.isInteger(parsedId) || parsedId <= 0) {
+            throw new AppError("Bình luận cha không hợp lệ", 400);
+        }
+
+        return parsedId;
     }
 
     async createPost(userId: string, input: CreatePostInput) {
@@ -252,8 +267,14 @@ export class ForumService {
         return this.getPostById(postId, userId);
     }
 
-    async createComment(postId: number, userId: string, rawContent?: string) {
+    async createComment(
+        postId: number,
+        userId: string,
+        rawContent?: string,
+        rawParentCommentId?: unknown
+    ) {
         const content = rawContent?.trim();
+        const parentCommentId = this.parseParentCommentId(rawParentCommentId);
         this.validateCommentLength(content);
 
         if (!content) {
@@ -270,9 +291,27 @@ export class ForumService {
                 throw new AppError("Không tìm thấy bài viết", 404);
             }
 
+            let parentComment: ForumComment | null = null;
+
+            if (parentCommentId) {
+                parentComment = await manager.findOne(ForumComment, {
+                    where: { id: parentCommentId },
+                    relations: { user: true },
+                });
+
+                if (!parentComment || parentComment.postId !== postId) {
+                    throw new AppError("Không tìm thấy bình luận cha", 404);
+                }
+            }
+
             const comment = await manager.save(
                 ForumComment,
-                manager.create(ForumComment, { postId, userId, content })
+                manager.create(ForumComment, {
+                    postId,
+                    parentCommentId,
+                    userId,
+                    content,
+                })
             );
 
             await manager.increment(ForumPost, { id: postId }, "commentsCount", 1);
@@ -286,13 +325,16 @@ export class ForumService {
                 throw new AppError("Không thể tạo bình luận", 500);
             }
 
-            if (post.userId === userId) {
+            const notifyUserId = parentComment?.userId ?? post.userId;
+
+            if (notifyUserId === userId) {
                 return { comment: savedComment, notifyUserId: null, payload: null };
             }
 
             const payload = {
                 type: NotificationType.NEW_COMMENT,
                 postId: post.id,
+                parentCommentId,
                 postTitle: post.title,
                 commenterName: savedComment.user?.name ?? "Người dùng",
                 commentContent: savedComment.content,
@@ -302,13 +344,13 @@ export class ForumService {
             await manager.save(
                 Notification,
                 manager.create(Notification, {
-                    userId: post.userId,
+                    userId: notifyUserId,
                     type: NotificationType.NEW_COMMENT,
                     payload,
                 })
             );
 
-            return { comment: savedComment, notifyUserId: post.userId, payload };
+            return { comment: savedComment, notifyUserId, payload };
         });
 
         if (result.notifyUserId && result.payload) {
@@ -358,17 +400,19 @@ export class ForumService {
                 throw new AppError("Bạn không có quyền xóa bình luận này", 403);
             }
 
+            const deletedIds = await this.getCommentBranchIds(manager, comment);
+
             await manager.remove(ForumComment, comment);
             await manager
                 .createQueryBuilder()
                 .update(ForumPost)
                 .set({
-                    commentsCount: () => 'GREATEST("comments_count" - 1, 0)',
+                    commentsCount: () => `GREATEST("comments_count" - ${deletedIds.length}, 0)`,
                 })
                 .where("id = :postId", { postId: comment.postId })
                 .execute();
 
-            return { id: commentId, postId: comment.postId };
+            return { id: commentId, ids: deletedIds, postId: comment.postId };
         });
     }
 
@@ -414,6 +458,31 @@ export class ForumService {
             .getRawMany<{ postId: number }>();
 
         return new Set(likes.map((like) => Number(like.postId)));
+    }
+
+    private async getCommentBranchIds(manager: EntityManager, rootComment: ForumComment) {
+        const comments = await manager.find(ForumComment, {
+            where: { postId: rootComment.postId },
+            select: { id: true, parentCommentId: true, postId: true },
+        });
+        const deletedIds = new Set<number>([rootComment.id]);
+        let changed = true;
+
+        while (changed) {
+            changed = false;
+            for (const comment of comments) {
+                if (
+                    comment.parentCommentId &&
+                    deletedIds.has(comment.parentCommentId) &&
+                    !deletedIds.has(comment.id)
+                ) {
+                    deletedIds.add(comment.id);
+                    changed = true;
+                }
+            }
+        }
+
+        return Array.from(deletedIds);
     }
 
     async getAdminPosts(input: AdminPostQueryInput) {

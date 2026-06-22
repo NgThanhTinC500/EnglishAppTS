@@ -59,11 +59,6 @@ type VocabularyTodayRow = {
     spellingWrongCount: number;
 };
 
-type VocabularyActivityDayRow = {
-    activityDate: string;
-    activityCount: number;
-};
-
 type ListeningProgressRow = {
     totalLessons: number;
     learnedLessons: number;
@@ -585,102 +580,11 @@ export class ProgressService {
         };
     }
 
-    private async getVocabularyActivityDays(userId: string) {
-        const rows = await AppDataSource.query(
-            `
-            SELECT
-                TO_CHAR(vpa."answeredAt" AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD') AS "activityDate",
-                COUNT(vpa.id)::int AS "activityCount"
-            FROM vocabulary_practice_answers vpa
-            WHERE vpa."userId" = $1
-                AND vpa.mode = $2
-            GROUP BY "activityDate"
-            ORDER BY "activityDate" DESC
-            `,
-            [userId, VocabularyPracticeMode.SPELLING],
-        );
-
-        return (rows as VocabularyActivityDayRow[]).map((row) => ({
-            date: row.activityDate,
-            count: this.toNumber(row.activityCount),
-        }));
-    }
-
-    private buildVocabularyStreak(activityDays: { date: string; count: number }[]) {
-        const activityMap = new Map(activityDays.map((item) => [item.date, item.count]));
-        const todayRange = this.getVietnamDayRange();
-        const today = new Date(`${todayRange.todayKey}T00:00:00+07:00`);
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        const cursor = activityMap.has(todayRange.todayKey) ? today : yesterday;
-        let current = 0;
-
-        while (activityMap.has(this.getDateKey(cursor))) {
-            current += 1;
-            cursor.setDate(cursor.getDate() - 1);
-        }
-
-        const sortedDates = activityDays
-            .map((item) => item.date)
-            .sort();
-        let longest = 0;
-        let run = 0;
-        let previousDate: Date | null = null;
-
-        sortedDates.forEach((dateKey) => {
-            const currentDate = new Date(`${dateKey}T00:00:00+07:00`);
-            const expectedPrevious = previousDate ? new Date(previousDate) : null;
-            expectedPrevious?.setDate(expectedPrevious.getDate() + 1);
-
-            if (previousDate && expectedPrevious && this.getDateKey(expectedPrevious) === dateKey) {
-                run += 1;
-            } else {
-                run = 1;
-            }
-
-            longest = Math.max(longest, run);
-            previousDate = currentDate;
-        });
-
-        return {
-            current,
-            longest,
-            studiedToday: activityMap.has(todayRange.todayKey),
-            lastStudyDate: activityDays[0]?.date ?? null,
-        };
-    }
-
-    private buildVocabularyCalendar(activityDays: { date: string; count: number }[]) {
-        const today = this.getVietnamDayRange();
-        const currentMonth = today.todayKey.slice(0, 7);
-        const monthDate = new Date(`${currentMonth}-01T00:00:00+07:00`);
-        const year = monthDate.getFullYear();
-        const month = monthDate.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const activityMap = new Map(activityDays.map((item) => [item.date, item.count]));
-
-        return Array.from({ length: daysInMonth }, (_, index) => {
-            const day = index + 1;
-            const date = new Date(year, month, day);
-            const dateKey = this.getDateKey(date);
-            const count = activityMap.get(dateKey) ?? 0;
-
-            return {
-                date: dateKey,
-                day,
-                count,
-                level: count >= 5 ? "strong" : count > 0 ? "light" : "none",
-            };
-        });
-    }
-
     async getVocabularyProgress(userId: string, days?: number) {
         const period = this.buildOptionalPeriod(days);
-        const [overview, today, activityDays, latestSession] = await Promise.all([
+        const [overview, today, latestSession] = await Promise.all([
             this.getVocabularyOverview(userId, period),
             this.getVocabularyToday(userId),
-            this.getVocabularyActivityDays(userId),
             AppDataSource.getRepository(VocabularyPracticeSession).findOne({
                 where: { userId, mode: VocabularyPracticeMode.SPELLING },
                 order: { updatedAt: "DESC" },
@@ -697,8 +601,6 @@ export class ProgressService {
                 : { days: null, from: null, to: null },
             overview,
             today,
-            streak: this.buildVocabularyStreak(activityDays),
-            calendar: this.buildVocabularyCalendar(activityDays),
             latestSession,
         };
     }
