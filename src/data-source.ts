@@ -35,6 +35,11 @@ import { VocabularyPracticeSession } from "./entity/VocabularyPracticeSession";
 import { VocabularySet } from "./entity/VocabularySet";
 
 const isProd = process.env.NODE_ENV === "production";
+const usesPostgresSsl =
+  process.env.POSTGRES_SSL === "true" ||
+  process.env.POSTGRES_SSL === "1" ||
+  isProd;
+
 export const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.POSTGRES_HOST,
@@ -86,7 +91,7 @@ export const AppDataSource = new DataSource({
   subscribers: isProd
     ? ["build/subscriber/**/*.js"]
     : ["src/subscriber/**/*.ts"],
-  ssl: !!process.env.POSTGRES_SSL,
+  ssl: usesPostgresSsl ? { rejectUnauthorized: false } : false,
 });
 // Standard migration workflow
 // 1. Create or update entity
