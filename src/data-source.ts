@@ -1,6 +1,6 @@
+import "dotenv/config";
 import "reflect-metadata";
 import { DataSource } from "typeorm";
-import "dotenv/config";
 import { Attempt } from "./entity/Attempt";
 import { AttemptAnswer } from "./entity/AttemptAnswer";
 import { Blog } from "./entity/Blog";
@@ -47,7 +47,7 @@ export const AppDataSource = new DataSource({
   username: process.env.POSTGRES_USERNAME,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB,
-  synchronize: false, // keep disabled and use migrations
+  synchronize: true, // keep disabled and use migrations
   logging: false, // display query in console , ex: SELECT * FROM ...
   entities: [
     Attempt,
@@ -91,12 +91,11 @@ export const AppDataSource = new DataSource({
   subscribers: isProd
     ? ["build/subscriber/**/*.js"]
     : ["src/subscriber/**/*.ts"],
-  ssl: usesPostgresSsl ? { rejectUnauthorized: false } : false,
+  ssl: usesPostgresSsl
+    ? { rejectUnauthorized: false }
+    : false,
 });
 // Standard migration workflow
 // 1. Create or update entity
 // 2. Generate migration: npx typeorm-ts-node-commonjs migration:generate ./src/migration/InitDB -d src/data-source.ts
 // 3. Run migration: npx typeorm-ts-node-commonjs migration:run -d src/data-source.ts
-
-
-
