@@ -12,6 +12,7 @@ import { ExamQuestion } from "../entity/ExamQuestion";
 import { Question, QuestionCategory, QuestionType } from "../entity/Question";
 import { QuestionOption } from "../entity/QuestionOption";
 import { AppError } from "../utils/appError";
+import { FreeAiHintService } from "./freeAiHintService";
 
 export class AttemptService {
     private attemptRepository: Repository<Attempt>;
@@ -20,6 +21,7 @@ export class AttemptService {
     private examQuestionRepository: Repository<ExamQuestion>;
     private questionRepository: Repository<Question>;
     private questionOptionRepository: Repository<QuestionOption>;
+    private freeAiHintService: FreeAiHintService;
 
     constructor() {
         this.attemptRepository = AppDataSource.getRepository(Attempt);
@@ -28,6 +30,7 @@ export class AttemptService {
         this.examQuestionRepository = AppDataSource.getRepository(ExamQuestion);
         this.questionRepository = AppDataSource.getRepository(Question);
         this.questionOptionRepository = AppDataSource.getRepository(QuestionOption);
+        this.freeAiHintService = new FreeAiHintService();
     }
 
     // helper methods
@@ -185,6 +188,31 @@ export class AttemptService {
                 content: option.content
             }
             : null;
+    }
+
+    private async buildSingleChoiceExplanation(
+        question: Question,
+        selectedOption: QuestionOption,
+        correctOption: QuestionOption
+    ) {
+        if (selectedOption.isCorrect) {
+            return {
+                explanation: question.explanation ?? null,
+                aiHint: null,
+            };
+        }
+
+        const aiHint = await this.freeAiHintService.generateWrongAnswerHint({
+            question: question.content ?? "",
+            selectedAnswer: selectedOption.content,
+            correctAnswer: correctOption.content,
+            baseExplanation: question.explanation,
+        });
+
+        return {
+            explanation: aiHint ?? question.explanation ?? null,
+            aiHint,
+        };
     }
 
     // replace the first occurrence of the answer in the transcript with [BLANK],
@@ -424,7 +452,7 @@ export class AttemptService {
 
         const question = await this.questionRepository.findOne({
             where: { id: questionId },
-            select: ["id", "category", "type", "explanation", "transcript"]
+            select: ["id", "category", "type", "content", "explanation", "transcript"]
         });
         if (!question) throw new AppError("Question not found", 404);
         this.ensureQuestionMatchesPracticeMode(attempt, question);
@@ -444,6 +472,12 @@ export class AttemptService {
         if (!correctOption) {
             throw new AppError("Question has no correct option", 400);
         }
+
+        const answerExplanation = await this.buildSingleChoiceExplanation(
+            question,
+            selectedOption,
+            correctOption
+        );
 
         await this.attemptAnswerRepository.upsert({
             attemptId,
@@ -465,7 +499,8 @@ export class AttemptService {
             isCorrect: selectedOption.isCorrect,
             correctOptionId: correctOption?.id ?? null,
             correctOption: this.toAnswerOption(correctOption),
-            explanation: question.explanation ?? null,
+            explanation: answerExplanation.explanation,
+            aiHint: answerExplanation.aiHint,
             transcript: question.transcript ?? null,
         };
     }
