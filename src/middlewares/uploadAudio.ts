@@ -50,7 +50,7 @@ export const uploadAudio = multer({
 
 export const uploadAudioSingle = uploadAudio.single("audio");
 
-export const handleUploadAudioError = (err: unknown, _req: Request, res: Response, next: NextFunction) => {
+export const handleUploadAudioError = (err: any, _req: Request, res: Response, next: NextFunction) => {
     if (err instanceof multer.MulterError) {
         if (err.code === "LIMIT_FILE_SIZE") {
             return res.status(400).json({

@@ -78,7 +78,7 @@ export const uploadToeicAudioSingle = uploadToeicMedia.single("audio");
 export const uploadToeicImages = uploadToeicMedia.array("images", 10);
 
 export function handleUploadToeicMediaError(
-    err: unknown,
+    err: any,
     _req: Request,
     res: Response,
     next: NextFunction
