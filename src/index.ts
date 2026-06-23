@@ -34,6 +34,7 @@ dotenv.config();
 import { createServer } from "http";
 import { initSocket } from "./socket/index";
 import { startToeicSessionExpirationJob } from "./jobs/toeicSessionExpirationJob";
+import { ensureAdminExists } from "./seeds/createAdmin";
 
 console.log('NODE_ENV =', process.env.NODE_ENV);
 const corsOptions = {
@@ -43,6 +44,15 @@ const corsOptions = {
 
 AppDataSource.initialize()
   .then(async () => {
+
+    // Optionally seed admin user on startup (enable with SEED_ADMIN_ON_STARTUP=true)
+    try {
+      if (process.env.SEED_ADMIN_ON_STARTUP === "true") {
+        await ensureAdminExists(AppDataSource);
+      }
+    } catch (err) {
+      console.error("Error ensuring admin user:", err);
+    }
 
     // create express app
     const app = express();
