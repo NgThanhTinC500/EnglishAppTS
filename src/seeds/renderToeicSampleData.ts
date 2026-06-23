@@ -589,7 +589,7 @@ async function saveQuestion(
   await manager.save(savedQuestion);
 }
 
-async function seed() {
+export async function seedRenderToeicSampleData() {
   if (!AppDataSource.isInitialized) {
     await AppDataSource.initialize();
   }
@@ -671,13 +671,15 @@ async function seed() {
   console.log(`Seeded collection: ${COLLECTION_TITLE}`);
 }
 
-seed()
-  .then(async () => {
-    if (AppDataSource.isInitialized) await AppDataSource.destroy();
-    process.exit(0);
-  })
-  .catch(async (error) => {
-    console.error(error);
-    if (AppDataSource.isInitialized) await AppDataSource.destroy();
-    process.exit(1);
-  });
+if (require.main === module) {
+  seedRenderToeicSampleData()
+    .then(async () => {
+      if (AppDataSource.isInitialized) await AppDataSource.destroy();
+      process.exit(0);
+    })
+    .catch(async (error) => {
+      console.error(error);
+      if (AppDataSource.isInitialized) await AppDataSource.destroy();
+      process.exit(1);
+    });
+}
