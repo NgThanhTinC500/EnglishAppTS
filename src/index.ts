@@ -16,6 +16,7 @@ import authRouter from "./router/authRouter";
 import blogRouter from "./router/blogRouter";
 import commentRouter from './router/commenRouter';
 import courseRouter from "./router/courseRouter";
+import englishChatRouter from "./router/englishChatRouter";
 import forumRouter from "./router/forumRouter";
 import lectureRouter from "./router/LectureRouter";
 import lessonRouter from "./router/LessonRouter";
@@ -117,6 +118,7 @@ AppDataSource.initialize()
     app.use("/api/v1", lessonRouter);
     app.use("/api/v1", lectureRouter);
     app.use("/api/v1", commentRouter);
+    app.use("/api/v1", englishChatRouter);
     app.use("/api/v1/toeic-collections", toeicCollectionRouter);
     app.use("/api/v1", toeicExamSetRouter);
     app.use("/api/v1", toeicExamPartRouter);
