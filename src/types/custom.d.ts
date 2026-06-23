@@ -1,5 +1,5 @@
 // src/types/express.d.ts
-import { User } from "../../entity/User";
+import { User } from "../entity/User";
 
 // Source - https://stackoverflow.com/a/68641378
 // Posted by Solz, modified by community. See post 'Timeline' for change history
