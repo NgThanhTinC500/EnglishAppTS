@@ -1,7 +1,6 @@
-/// <reference types="express" />
-/// <reference types="multer" />
-
 import { User } from "../entity/User";
+import "express";
+import "multer";
 
 declare global {
   namespace Express {

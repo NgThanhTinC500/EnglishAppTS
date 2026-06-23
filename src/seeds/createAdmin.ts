@@ -18,7 +18,15 @@ export async function ensureAdminExists(ds?: DataSource) {
 
   const existing = await userRepo.findOne({ where: { email } });
   if (existing) {
-    console.log("Admin user already exists:", email);
+    const hashed = await bcrypt.hash(password, 12);
+
+    existing.name = existing.name || email;
+    existing.password = hashed;
+    existing.role = UserRole.ADMIN;
+    existing.isActive = true;
+
+    await userRepo.save(existing);
+    console.log("Ensured admin user:", email);
     if (initializedHere) await dataSource.destroy();
     return;
   }
