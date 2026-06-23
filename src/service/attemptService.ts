@@ -12,7 +12,6 @@ import { ExamQuestion } from "../entity/ExamQuestion";
 import { Question, QuestionCategory, QuestionType } from "../entity/Question";
 import { QuestionOption } from "../entity/QuestionOption";
 import { AppError } from "../utils/appError";
-import { FreeAiHintService } from "./freeAiHintService";
 
 export class AttemptService {
     private attemptRepository: Repository<Attempt>;
@@ -21,7 +20,6 @@ export class AttemptService {
     private examQuestionRepository: Repository<ExamQuestion>;
     private questionRepository: Repository<Question>;
     private questionOptionRepository: Repository<QuestionOption>;
-    private freeAiHintService: FreeAiHintService;
 
     constructor() {
         this.attemptRepository = AppDataSource.getRepository(Attempt);
@@ -30,7 +28,6 @@ export class AttemptService {
         this.examQuestionRepository = AppDataSource.getRepository(ExamQuestion);
         this.questionRepository = AppDataSource.getRepository(Question);
         this.questionOptionRepository = AppDataSource.getRepository(QuestionOption);
-        this.freeAiHintService = new FreeAiHintService();
     }
 
     // helper methods
@@ -190,28 +187,73 @@ export class AttemptService {
             : null;
     }
 
-    private async buildSingleChoiceExplanation(
+    private getReviewSuggestion(question: Question) {
+        const text = `${question.content ?? ""} ${question.explanation ?? ""}`.toLowerCase();
+
+        if (question.category === QuestionCategory.LISTENING) {
+            if (text.includes("why") || text.includes("because")) {
+                return "Nên ôn cách nghe câu hỏi Why và các tín hiệu nguyên nhân như because, due to, reason.";
+            }
+            if (text.includes("where") || text.includes("platform") || text.includes("desk")) {
+                return "Nên ôn câu hỏi Where, giới từ vị trí và từ vựng địa điểm thường gặp trong TOEIC.";
+            }
+            if (text.includes("when") || text.includes("time") || text.includes("noon") || text.includes("scheduled")) {
+                return "Nên ôn cách nghe mốc thời gian, giờ giấc và deadline.";
+            }
+            if (text.includes("who") || text.includes("visitor") || text.includes("attendee")) {
+                return "Nên ôn câu hỏi Who và cách bắt từ khóa chỉ người hoặc bộ phận.";
+            }
+            return "Nên ôn kỹ năng bắt keyword chính trong câu hỏi nghe TOEIC.";
+        }
+
+        if (text.includes("modal") || text.includes("must") || text.includes("will")) {
+            return "Nên ôn modal/future + động từ nguyên mẫu.";
+        }
+        if (text.includes("passive") || text.includes("bị động")) {
+            return "Nên ôn câu bị động: be + V3 và cách nhận diện chủ ngữ nhận hành động.";
+        }
+        if (text.includes("present perfect") || text.includes("since") || text.includes("for")) {
+            return "Nên ôn hiện tại hoàn thành với since/for.";
+        }
+        if (text.includes("past perfect") || text.includes("before")) {
+            return "Nên ôn quá khứ hoàn thành và mốc hành động xảy ra trước trong quá khứ.";
+        }
+        if (text.includes("preposition") || text.includes("giới từ")) {
+            return "Nên ôn giới từ thường gặp trong TOEIC: in, on, at, by, until, during.";
+        }
+        if (text.includes("connector") || text.includes("because") || text.includes("although") || text.includes("however")) {
+            return "Nên ôn connectors chỉ nguyên nhân, tương phản, kết quả và mục đích.";
+        }
+        if (text.includes("adjective") || text.includes("adverb") || text.includes("noun") || text.includes("word forms")) {
+            return "Nên ôn word forms: vị trí danh từ, động từ, tính từ và trạng từ.";
+        }
+
+        return "Nên ôn lại cấu trúc ngữ pháp chính của câu và dấu hiệu nhận biết đáp án.";
+    }
+
+    private buildSingleChoiceExplanation(
         question: Question,
         selectedOption: QuestionOption,
         correctOption: QuestionOption
     ) {
+        const baseExplanation = question.explanation ?? null;
+
         if (selectedOption.isCorrect) {
             return {
-                explanation: question.explanation ?? null,
+                explanation: baseExplanation,
                 aiHint: null,
             };
         }
 
-        const aiHint = await this.freeAiHintService.generateWrongAnswerHint({
-            question: question.content ?? "",
-            selectedAnswer: selectedOption.content,
-            correctAnswer: correctOption.content,
-            baseExplanation: question.explanation,
-        });
+        const wrongFeedback = [
+            baseExplanation,
+            `Bạn đã chọn "${selectedOption.content}", nhưng đáp án đúng là "${correctOption.content}".`,
+            this.getReviewSuggestion(question),
+        ].filter(Boolean).join(" ");
 
         return {
-            explanation: aiHint ?? question.explanation ?? null,
-            aiHint,
+            explanation: wrongFeedback || null,
+            aiHint: null,
         };
     }
 
@@ -473,7 +515,7 @@ export class AttemptService {
             throw new AppError("Question has no correct option", 400);
         }
 
-        const answerExplanation = await this.buildSingleChoiceExplanation(
+        const answerExplanation = this.buildSingleChoiceExplanation(
             question,
             selectedOption,
             correctOption
