@@ -1,24 +1,12 @@
-// src/types/custom.d.ts
-import { User } from "../entity/User";
-import type * as Multer from "multer";
-
-// Source - https://stackoverflow.com/a/68641378
-// Posted by Solz, modified by community. See post 'Timeline' for change history
-// Retrieved 2026-03-10, License - CC BY-SA 4.0
+import 'multer'; // 🌟 Ép TypeScript phải nạp toàn bộ thuộc tính mặc định của Multer (filename, path, mimetype...)
+import { User } from "../entity/User"; // Đảm bảo đường dẫn này đúng với thực tế dự án của bạn
 
 declare global {
   namespace Express {
     interface Request {
-      user?: User
-    }
-    namespace Multer {
-      interface File {}
-    }
-    interface Multer {
-      File: any;
+      user?: User; // 🌟 Chỉ giữ lại duy nhất dòng mở rộng thuộc tính 'user' này thôi!
     }
   }
 }
 
-
-export {}; // ✅ dòng này bắt buộc để file được coi là module
+export {}; // Bắt buộc phải có để file được tính là một module
