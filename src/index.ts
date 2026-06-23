@@ -5,37 +5,37 @@ import * as path from "path";
 import { AppDataSource } from "./data-source";
 import userRouter from "./router/userRouter";
 // import examRouter from "./router/examRouter";
-import questionRouter from "./router/questionRouter";
 import attemptRouter from "./router/attemptRouter";
+import questionRouter from "./router/questionRouter";
 
+import cookieParser from "cookie-parser";
+import cors from "cors";
 import rateLimit from 'express-rate-limit';
 import globalErrorHandler from './controller/errorController';
-import flashcardRouter from "./router/vocabularyRouter";
-import blogRouter from "./router/blogRouter";
 import authRouter from "./router/authRouter";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import topicRouter from "./router/topicRouter";
-import courseRouter from "./router/courseRouter";
-import lessonRouter from "./router/LessonRouter";
-import lectureRouter from "./router/LectureRouter";
+import blogRouter from "./router/blogRouter";
 import commentRouter from './router/commenRouter';
+import courseRouter from "./router/courseRouter";
+import forumRouter from "./router/forumRouter";
+import lectureRouter from "./router/LectureRouter";
+import lessonRouter from "./router/LessonRouter";
+import notificationRouter from "./router/notificationRouter";
+import progressRouter from "./router/progressRouter";
 import toeicCollectionRouter from "./router/toeicCollectionRouter";
-import toeicExamSetRouter from "./router/toeicExamSetRouter";
 import toeicExamPartRouter from "./router/toeicExamPartRouter";
+import toeicExamSessionRouter from "./router/toeicExamSessionRouter";
+import toeicExamSetRouter from "./router/toeicExamSetRouter";
 import toeicQuestionGroupRouter from "./router/toeicQuestionGroupRouter";
 import toeicQuestionRouter from "./router/toeicQuestionRouter";
-import toeicExamSessionRouter from "./router/toeicExamSessionRouter";
-import progressRouter from "./router/progressRouter";
-import forumRouter from "./router/forumRouter";
-import notificationRouter from "./router/notificationRouter";
+import topicRouter from "./router/topicRouter";
+import flashcardRouter from "./router/vocabularyRouter";
 import { getCorsOrigin } from "./utils/httpConfig";
-dotenv.config();
+
 import { createServer } from "http";
-import { initSocket } from "./socket/index";
 import { startToeicSessionExpirationJob } from "./jobs/toeicSessionExpirationJob";
 import { ensureAdminExists } from "./seeds/createAdmin";
-
+import { initSocket } from "./socket/index";
+dotenv.config();
 console.log('NODE_ENV =', process.env.NODE_ENV);
 const corsOptions = {
   origin: getCorsOrigin(),
@@ -77,7 +77,7 @@ AppDataSource.initialize()
 
     app.use(cors(corsOptions));
     app.use(express.json());
-    
+
     // cookieParser to read cookies from incoming requests,
     //  allowing us to access them via req.cookies in our route handlers.
     app.use(cookieParser());
