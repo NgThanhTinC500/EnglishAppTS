@@ -56,6 +56,7 @@
     "build": "rimraf build && tsc",
     "start": "node build/index.js",
     "seed:create-admin": "ts-node src/seeds/createAdmin.ts",
+    "seed:toeic-render": "node build/seeds/renderToeicSampleData.js",
     "typeorm": "typeorm-ts-node-commonjs",
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"",
     "lint:fix": "eslint 'src/**/*.{js,ts,tsx}' --fix"

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import "reflect-metadata";
 import { DataSource } from "typeorm";
+import { PostgresConnectionOptions } from "typeorm/driver/postgres/PostgresConnectionOptions";
 import { Attempt } from "./entity/Attempt";
 import { AttemptAnswer } from "./entity/AttemptAnswer";
 import { Blog } from "./entity/Blog";
@@ -39,20 +40,46 @@ const usesPostgresSsl =
   process.env.POSTGRES_SSL === "true" ||
   process.env.POSTGRES_SSL === "1" ||
   isProd;
+const shouldSynchronize =
+  process.env.POSTGRES_SYNC === "true" || process.env.POSTGRES_SYNC === "1";
+
+function getPostgresOptions(): Partial<PostgresConnectionOptions> {
+  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_EXTERNAL_URL;
+
+  if (databaseUrl) {
+    return { url: databaseUrl };
+  }
+
+  const requiredEnvKeys = [
+    "POSTGRES_HOST",
+    "POSTGRES_PORT",
+    "POSTGRES_USERNAME",
+    "POSTGRES_PASSWORD",
+    "POSTGRES_DB",
+  ] as const;
+
+  const missingKeys = requiredEnvKeys.filter((key) => !process.env[key]);
+  if (missingKeys.length > 0) {
+    throw new Error(
+      `Missing database environment variables: ${missingKeys.join(", ")}. ` +
+        "Set DATABASE_URL or all POSTGRES_* variables before starting the server or running seeds."
+    );
+  }
+
+  return {
+    host: process.env.POSTGRES_HOST,
+    port: Number(process.env.POSTGRES_PORT),
+    username: process.env.POSTGRES_USERNAME,
+    password: String(process.env.POSTGRES_PASSWORD),
+    database: process.env.POSTGRES_DB,
+  };
+}
 
 export const AppDataSource = new DataSource({
   type: "postgres",
   // Support DATABASE_URL (Render, Heroku) or individual POSTGRES_* vars
-  ...(process.env.DATABASE_URL
-    ? { url: process.env.DATABASE_URL }
-    : {
-        host: process.env.POSTGRES_HOST,
-        port: Number(process.env.POSTGRES_PORT),
-        username: process.env.POSTGRES_USERNAME,
-        password: process.env.POSTGRES_PASSWORD,
-        database: process.env.POSTGRES_DB,
-      }),
-  synchronize: true, // keep disabled and use migrations
+  ...getPostgresOptions(),
+  synchronize: shouldSynchronize, // enable only with POSTGRES_SYNC=true
   logging: false, // display query in console , ex: SELECT * FROM ...
   entities: [
     Attempt,
