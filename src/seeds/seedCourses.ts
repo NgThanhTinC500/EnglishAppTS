@@ -20,7 +20,7 @@ const COURSE_SEEDS = [
         lectures: [
           {
             title: "TOEIC Listening Part 1: Picture Description Practice",
-            videoUrl: "https://www.youtube.com/watch?v=7_BufVhGKcQ",
+            videoUrl: "https://www.youtube.com/watch?v=SaV2m8jtaRI",
           },
           {
             title: "TOEIC Part 1: Common Picture Traps",
@@ -68,11 +68,11 @@ const COURSE_SEEDS = [
         lectures: [
           {
             title: "TOEIC Reading Part 6: Text Completion Practice",
-            videoUrl: "https://www.youtube.com/watch?v=7NZbbc_JzbI",
+            videoUrl: "https://www.youtube.com/watch?v=mxknneAjpYs",
           },
           {
             title: "TOEIC Part 6: Context and Sentence Insertion",
-            videoUrl: "https://www.youtube.com/watch?v=7NZbbc_JzbI",
+            videoUrl: "https://www.youtube.com/watch?v=w7HfDtaUF8E",
           },
         ],
       },
@@ -94,7 +94,7 @@ const COURSE_SEEDS = [
           },
           {
             title: "Business English: Professional Office Phrases",
-            videoUrl: "https://www.youtube.com/watch?v=I-DiPTWUxyg",
+            videoUrl: "https://www.youtube.com/watch?v=B-JDi7W7-Qk",
           },
         ],
       },
@@ -107,7 +107,7 @@ const COURSE_SEEDS = [
           },
           {
             title: "Business English: Payment and Order Vocabulary",
-            videoUrl: "https://www.youtube.com/watch?v=s1vtM_g6rpE",
+            videoUrl: "https://www.youtube.com/watch?v=5Y-nJywmW1E",
           },
         ],
       },
@@ -138,11 +138,11 @@ const COURSE_SEEDS = [
         lectures: [
           {
             title: "TOEIC Part 7: Multiple Passage Practice",
-            videoUrl: "https://www.youtube.com/watch?v=F638wYhbpRs",
+            videoUrl: "https://www.youtube.com/watch?v=fnZULBI_7Nk",
           },
           {
             title: "TOEIC Part 7: Inference and Paraphrase",
-            videoUrl: "https://www.youtube.com/watch?v=zQvRCEUHHpc",
+            videoUrl: "https://www.youtube.com/watch?v=XOfz4MgQpsU",
           },
         ],
       },
@@ -164,7 +164,7 @@ const COURSE_SEEDS = [
           },
           {
             title: "English Pronunciation: Connected Speech",
-            videoUrl: "https://www.youtube.com/watch?v=Vu6UVwkUgzc",
+            videoUrl: "https://www.youtube.com/watch?v=gAHUTKm_1n0",
           },
         ],
       },
@@ -173,11 +173,11 @@ const COURSE_SEEDS = [
         lectures: [
           {
             title: "Workplace English: Scheduling a Meeting",
-            videoUrl: "https://www.youtube.com/watch?v=I-DiPTWUxyg",
+            videoUrl: "https://www.youtube.com/watch?v=PLhAzAymMsY",
           },
           {
             title: "Workplace English: Requests and Polite Responses",
-            videoUrl: "https://www.youtube.com/watch?v=I-DiPTWUxyg",
+            videoUrl: "https://www.youtube.com/watch?v=QWBwCoecvkM",
           },
         ],
       },
