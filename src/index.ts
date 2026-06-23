@@ -34,10 +34,12 @@ import { getCorsOrigin } from "./utils/httpConfig";
 import { createServer } from "http";
 import { startToeicSessionExpirationJob } from "./jobs/toeicSessionExpirationJob";
 import { ensureAdminExists } from "./seeds/createAdmin";
-import { seedRenderToeicSampleData } from "./seeds/renderToeicSampleData";
+import { seedCourses } from "./seeds/seedCourses";
 import { initSocket } from "./socket/index";
 dotenv.config();
 console.log('NODE_ENV =', process.env.NODE_ENV);
+console.log('SEED_ADMIN_ON_STARTUP =', process.env.SEED_ADMIN_ON_STARTUP);
+console.log('SEED_COURSES_ON_STARTUP =', process.env.SEED_COURSES_ON_STARTUP);
 const corsOptions = {
   origin: getCorsOrigin(),
   credentials: true,
@@ -55,13 +57,12 @@ AppDataSource.initialize()
       console.error("Error ensuring admin user:", err);
     }
 
-    // Optionally seed TOEIC sample data on startup (enable with SEED_TOEIC_ON_STARTUP=true)
     try {
-      if (process.env.SEED_TOEIC_ON_STARTUP === "true") {
-        await seedRenderToeicSampleData();
+      if (process.env.SEED_COURSES_ON_STARTUP === "true") {
+        await seedCourses();
       }
     } catch (err) {
-      console.error("Error seeding TOEIC sample data:", err);
+      console.error("Error seeding courses:", err);
     }
 
     // create express app
