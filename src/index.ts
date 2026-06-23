@@ -35,11 +35,13 @@ import { createServer } from "http";
 import { startToeicSessionExpirationJob } from "./jobs/toeicSessionExpirationJob";
 import { ensureAdminExists } from "./seeds/createAdmin";
 import { seedCourses } from "./seeds/seedCourses";
+import { seedTopics } from "./seeds/seedTopics";
 import { initSocket } from "./socket/index";
 dotenv.config();
 console.log('NODE_ENV =', process.env.NODE_ENV);
 console.log('SEED_ADMIN_ON_STARTUP =', process.env.SEED_ADMIN_ON_STARTUP);
 console.log('SEED_COURSES_ON_STARTUP =', process.env.SEED_COURSES_ON_STARTUP);
+console.log('SEED_TOPICS_ON_STARTUP =', process.env.SEED_TOPICS_ON_STARTUP);
 const corsOptions = {
   origin: getCorsOrigin(),
   credentials: true,
@@ -63,6 +65,14 @@ AppDataSource.initialize()
       }
     } catch (err) {
       console.error("Error seeding courses:", err);
+    }
+
+    try {
+      if (process.env.SEED_TOPICS_ON_STARTUP === "true") {
+        await seedTopics();
+      }
+    } catch (err) {
+      console.error("Error seeding topics:", err);
     }
 
     // create express app

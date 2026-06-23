@@ -57,6 +57,7 @@
     "start": "node build/index.js",
     "seed:create-admin": "ts-node src/seeds/createAdmin.ts",
     "seed:courses": "node build/seeds/seedCourses.js",
+    "seed:topics": "node build/seeds/seedTopics.js",
     "seed:toeic-render": "node build/seeds/renderToeicSampleData.js",
     "seed:admin-render": "node build/seeds/renderAdminSampleData.js",
     "seed:toeic-check": "node build/seeds/checkToeicSeedStatus.js",
