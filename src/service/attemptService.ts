@@ -12,6 +12,7 @@ import { ExamQuestion } from "../entity/ExamQuestion";
 import { Question, QuestionCategory, QuestionType } from "../entity/Question";
 import { QuestionOption } from "../entity/QuestionOption";
 import { AppError } from "../utils/appError";
+import { generateAnswerExplanation } from "./englishChatService";
 
 export class AttemptService {
     private attemptRepository: Repository<Attempt>;
@@ -231,30 +232,115 @@ export class AttemptService {
         return "Nên ôn lại cấu trúc ngữ pháp chính của câu và dấu hiệu nhận biết đáp án.";
     }
 
-    private buildSingleChoiceExplanation(
+    private buildFallbackSingleChoiceExplanation(
         question: Question,
         selectedOption: QuestionOption,
         correctOption: QuestionOption
     ) {
-        const baseExplanation = question.explanation ?? null;
+        const answerState = selectedOption.isCorrect
+            ? `Bạn đã chọn đúng đáp án "${correctOption.content}".`
+            : `Bạn đã chọn "${selectedOption.content}", nhưng đáp án đúng là "${correctOption.content}".`;
 
-        if (selectedOption.isCorrect) {
+        return [
+            `Cấu trúc ngữ pháp: ${question.explanation || this.getReviewSuggestion(question)}`,
+            `Lý do chọn đáp án ${correctOption.label}: "${correctOption.content}" khớp với dữ liệu đáp án đúng của câu hỏi trong database.`,
+            `Vì sao đáp án đã chọn sai/đúng: ${answerState} ${this.getReviewSuggestion(question)}`,
+        ].join("\n");
+    }
+
+    private async buildSingleChoiceExplanation(
+        question: Question,
+        selectedOption: QuestionOption,
+        correctOption: QuestionOption,
+        options: QuestionOption[]
+    ) {
+        const fallbackExplanation = this.buildFallbackSingleChoiceExplanation(
+            question,
+            selectedOption,
+            correctOption
+        );
+
+        try {
+            const explanation = await generateAnswerExplanation({
+                questionContent: question.content,
+                category: question.category,
+                transcript: question.transcript,
+                selectedOption: {
+                    label: selectedOption.label,
+                    content: selectedOption.content,
+                },
+                correctOption: {
+                    label: correctOption.label,
+                    content: correctOption.content,
+                },
+                options: options.map((option) => ({
+                    label: option.label,
+                    content: option.content,
+                    isCorrect: option.isCorrect,
+                })),
+                existingExplanation: question.explanation,
+            });
+
             return {
-                explanation: baseExplanation,
-                aiHint: null,
+                explanation,
+                aiHint: explanation,
+                explanationSource: "api",
+            };
+        } catch {
+            return {
+                explanation: fallbackExplanation,
+                aiHint: fallbackExplanation,
+                explanationSource: "fallback",
             };
         }
+    }
 
-        const wrongFeedback = [
-            baseExplanation,
-            `Bạn đã chọn "${selectedOption.content}", nhưng đáp án đúng là "${correctOption.content}".`,
-            this.getReviewSuggestion(question),
-        ].filter(Boolean).join(" ");
+    private async buildSubmittedSingleChoiceExplanation(
+        question: Question,
+        selectedOption: QuestionOption | null | undefined,
+        correctOption: QuestionOption,
+        options: QuestionOption[]
+    ) {
+        if (selectedOption) {
+            const result = await this.buildSingleChoiceExplanation(
+                question,
+                selectedOption,
+                correctOption,
+                options
+            );
 
-        return {
-            explanation: wrongFeedback || null,
-            aiHint: null,
-        };
+            return result.explanation;
+        }
+
+        const fallbackExplanation = [
+            `Cấu trúc ngữ pháp: ${question.explanation || this.getReviewSuggestion(question)}`,
+            `Lý do chọn đáp án ${correctOption.label}: "${correctOption.content}" là đáp án đúng theo dữ liệu câu hỏi trong database.`,
+            "Vì sao đáp án đã chọn sai/đúng: Bạn chưa chọn đáp án cho câu này.",
+        ].join("\n");
+
+        try {
+            return await generateAnswerExplanation({
+                questionContent: question.content,
+                category: question.category,
+                transcript: question.transcript,
+                selectedOption: {
+                    label: "-",
+                    content: "Chưa chọn đáp án",
+                },
+                correctOption: {
+                    label: correctOption.label,
+                    content: correctOption.content,
+                },
+                options: options.map((option) => ({
+                    label: option.label,
+                    content: option.content,
+                    isCorrect: option.isCorrect,
+                })),
+                existingExplanation: question.explanation,
+            });
+        } catch {
+            return fallbackExplanation;
+        }
     }
 
     // replace the first occurrence of the answer in the transcript with [BLANK],
@@ -515,10 +601,11 @@ export class AttemptService {
             throw new AppError("Question has no correct option", 400);
         }
 
-        const answerExplanation = this.buildSingleChoiceExplanation(
+        const answerExplanation = await this.buildSingleChoiceExplanation(
             question,
             selectedOption,
-            correctOption
+            correctOption,
+            options
         );
 
         await this.attemptAnswerRepository.upsert({
@@ -543,6 +630,7 @@ export class AttemptService {
             correctOption: this.toAnswerOption(correctOption),
             explanation: answerExplanation.explanation,
             aiHint: answerExplanation.aiHint,
+            explanationSource: answerExplanation.explanationSource,
             transcript: question.transcript ?? null,
         };
     }
@@ -748,6 +836,40 @@ export class AttemptService {
             questions.map((question) => [question.id, question])
         );
 
+        const answerPayloads = await Promise.all(examQuestionIds.map(async (questionId) => {
+            const item = detailedAnswerByQuestionId.get(questionId);
+            const question = item?.question ?? questionById.get(questionId);
+            const correctOption = question?.options?.find((option) => option.isCorrect) ?? null;
+            const selectedOption = item?.selectedOption ??
+                question?.options?.find((option) => option.id === item?.selectedOptionId) ??
+                null;
+            const answered = Boolean(item);
+            const explanation = question?.type === QuestionType.SINGLE_CHOICE && correctOption
+                ? await this.buildSubmittedSingleChoiceExplanation(
+                    question,
+                    selectedOption,
+                    correctOption,
+                    question.options ?? []
+                )
+                : question?.explanation ?? null;
+
+            return {
+                questionId,
+                questionType: question?.type,
+                content: question?.content,
+                selectedOptionId: item?.selectedOptionId ?? null,
+                selectedOption: this.toAnswerOption(selectedOption),
+                answerText: item?.answerText ?? null,
+                correctOptionId: correctOption?.id ?? null,
+                correctOption: this.toAnswerOption(correctOption),
+                correctAnswers: this.getCorrectDictationAnswers(question),
+                result: item?.result ?? "unanswered",
+                answered,
+                explanation,
+                transcript: question?.transcript ?? null
+            };
+        }));
+
         return {
             attempt: savedAttempt,
             scope: {
@@ -763,28 +885,7 @@ export class AttemptService {
                 incorrectOrUnansweredCount: Math.max(totalQuestions - correctCount, 0),
                 score
             },
-            answers: examQuestionIds.map((questionId) => {
-                const item = detailedAnswerByQuestionId.get(questionId);
-                const question = item?.question ?? questionById.get(questionId);
-                const correctOption = question?.options?.find((option) => option.isCorrect) ?? null;
-                const answered = Boolean(item);
-
-                return {
-                    questionId,
-                    questionType: question?.type,
-                    content: question?.content,
-                    selectedOptionId: item?.selectedOptionId ?? null,
-                    selectedOption: this.toAnswerOption(item?.selectedOption),
-                    answerText: item?.answerText ?? null,
-                    correctOptionId: correctOption?.id ?? null,
-                    correctOption: this.toAnswerOption(correctOption),
-                    correctAnswers: this.getCorrectDictationAnswers(question),
-                    result: item?.result ?? "unanswered",
-                    answered,
-                    explanation: question?.explanation ?? null,
-                    transcript: question?.transcript ?? null
-                };
-            })
+            answers: answerPayloads
         };
     }
 }
