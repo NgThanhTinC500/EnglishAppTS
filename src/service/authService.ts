@@ -56,12 +56,11 @@ export class AuthService {
         if (!email || !password) {
             throw new AppError("Vui lòng cung cấp email và mật khẩu", 400);
         }
-
         const user = await this.userService.findByEmail(email);
 
         if (!user || !user.isActive) {
             // 401 unauthorized
-            throw new AppError("Sai email hoặc mật khẩu", 401);
+            throw new AppError("Email hoặc mật khẩu không đúng", 401);
         }
 
         const isPasswordCorrect = await this.passwordService.comparePassword(
@@ -213,7 +212,7 @@ export class AuthService {
         });
 
         if (!user) {
-            throw new AppError("Token is invalid or has expired", 400);
+            throw new AppError("Mật khẩu đã được đổi, vui lòng gửi lại yêu cầu", 400);
         }
 
         if (password !== passwordConfirm) {

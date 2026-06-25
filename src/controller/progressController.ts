@@ -8,9 +8,8 @@ export class ProgressController {
 
     private getUserId(req: Request) {
         if (!req.user) {
-            throw new AppError("Unauthorized", 401);
+            throw new AppError("Vui lòng đăng nhập", 401);
         }
-
         return req.user.id;
     }
 
