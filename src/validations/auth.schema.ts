@@ -12,6 +12,7 @@ export const signupSchema = z.object({
             .string()
             .trim()
             .toLowerCase()
+            .min(1, "Email là bắt buộc")
             .email("Email không hợp lệ"),
 
         password: z
@@ -34,6 +35,7 @@ export const loginSchema = z.object({
             .string()
             .trim()
             .toLowerCase()
+            .min(1, "Email là bắt buộc")
             .email("Email không hợp lệ"),
 
         password: z
@@ -48,6 +50,7 @@ export const forgotPasswordSchema = z.object({
             .string()
             .trim()
             .toLowerCase()
+            .min(1, "Email là bắt buộc")
             .email("Email không hợp lệ"),
     }).strict(),
 });

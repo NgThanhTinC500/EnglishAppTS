@@ -23,8 +23,8 @@ export class LectureService {
         this.ensurePositiveInteger(lessonId, "lessonId");
         const title = lectureData.title?.trim();
         const videoUrl = lectureData.videoUrl?.trim();
-        if (!title) throw new AppError("Lecture title is required", 400);
-        if (!videoUrl) throw new AppError("Lecture videoUrl is required", 400);
+        if (!title) throw new AppError("Phải có tiêu đề cho bài giảng", 400);
+        if (!videoUrl) throw new AppError("Phải có video cho bài giảng", 400);
 
         const lessonExists = await this.lessonRepository.findOne({
             where: { id: lessonId }
@@ -96,12 +96,12 @@ export class LectureService {
 
         if (updateData.title !== undefined) {
             const title = updateData.title.trim();
-            if (!title) throw new AppError("Lecture title is required", 400);
+            if (!title) throw new AppError("Phải có tiêu đề cho bài giảng", 400);
             lecture.title = title;
         }
         if (updateData.videoUrl !== undefined) {
             const videoUrl = updateData.videoUrl.trim();
-            if (!videoUrl) throw new AppError("Lecture videoUrl is required", 400);
+            if (!videoUrl) throw new AppError("Phải có video cho bài giảng", 400);
             lecture.videoUrl = videoUrl;
         }
         if (updateData.lessonId !== undefined) {

@@ -11,7 +11,7 @@
     "experimentalDecorators": true,
     "sourceMap": true,
     "strictPropertyInitialization": false,
-    "typeRoots": ["./src/types", "./node_modules/@types"]
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts"]
 }

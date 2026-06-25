@@ -5,6 +5,7 @@ import {
     Index,
     JoinColumn,
     ManyToOne,
+    OneToMany,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from "typeorm";
@@ -25,6 +26,20 @@ export class ForumComment {
     @ManyToOne(() => ForumPost, { onDelete: "CASCADE" })
     @JoinColumn({ name: "post_id" })
     post!: ForumPost;
+
+    @Column({ name: "parent_comment_id", nullable: true })
+    @Index()
+    parentCommentId!: number | null;
+
+    @ManyToOne(() => ForumComment, (comment) => comment.replies, {
+        nullable: true,
+        onDelete: "CASCADE",
+    })
+    @JoinColumn({ name: "parent_comment_id" })
+    parentComment!: ForumComment | null;
+
+    @OneToMany(() => ForumComment, (comment) => comment.parentComment)
+    replies!: ForumComment[];
 
     @Column({ name: "user_id", type: "uuid" })
     @Index()

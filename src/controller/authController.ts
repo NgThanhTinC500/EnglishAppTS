@@ -25,7 +25,6 @@ export class AuthController {
     const { password: _password, ...safeUser } = user;
     res.status(statusCode).json({
       status: "success",
-      token,
       user: safeUser,
     });
   }

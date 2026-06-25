@@ -12,9 +12,16 @@ export const validateRequest =
     });
 
     if (!result.success) {
-      const message = result.error.issues
-        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
-        .join(", ");
+      const fieldErrors = new Map<string, string>();
+
+      for (const issue of result.error.issues) {
+        const field = issue.path.join(".");
+        if (!fieldErrors.has(field)) {
+          fieldErrors.set(field, issue.message);
+        }
+      }
+
+      const message = Array.from(fieldErrors.values()).join(", ");
 
       return next(new AppError(message, 400));
     }

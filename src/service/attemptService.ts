@@ -12,6 +12,7 @@ import { ExamQuestion } from "../entity/ExamQuestion";
 import { Question, QuestionCategory, QuestionType } from "../entity/Question";
 import { QuestionOption } from "../entity/QuestionOption";
 import { AppError } from "../utils/appError";
+import { generateAnswerExplanation } from "./englishChatService";
 
 export class AttemptService {
     private attemptRepository: Repository<Attempt>;
@@ -185,6 +186,161 @@ export class AttemptService {
                 content: option.content
             }
             : null;
+    }
+
+    private getReviewSuggestion(question: Question) {
+        const text = `${question.content ?? ""} ${question.explanation ?? ""}`.toLowerCase();
+
+        if (question.category === QuestionCategory.LISTENING) {
+            if (text.includes("why") || text.includes("because")) {
+                return "Nên ôn cách nghe câu hỏi Why và các tín hiệu nguyên nhân như because, due to, reason.";
+            }
+            if (text.includes("where") || text.includes("platform") || text.includes("desk")) {
+                return "Nên ôn câu hỏi Where, giới từ vị trí và từ vựng địa điểm thường gặp trong TOEIC.";
+            }
+            if (text.includes("when") || text.includes("time") || text.includes("noon") || text.includes("scheduled")) {
+                return "Nên ôn cách nghe mốc thời gian, giờ giấc và deadline.";
+            }
+            if (text.includes("who") || text.includes("visitor") || text.includes("attendee")) {
+                return "Nên ôn câu hỏi Who và cách bắt từ khóa chỉ người hoặc bộ phận.";
+            }
+            return "Nên ôn kỹ năng bắt keyword chính trong câu hỏi nghe TOEIC.";
+        }
+
+        if (text.includes("modal") || text.includes("must") || text.includes("will")) {
+            return "Nên ôn modal/future + động từ nguyên mẫu.";
+        }
+        if (text.includes("passive") || text.includes("bị động")) {
+            return "Nên ôn câu bị động: be + V3 và cách nhận diện chủ ngữ nhận hành động.";
+        }
+        if (text.includes("present perfect") || text.includes("since") || text.includes("for")) {
+            return "Nên ôn hiện tại hoàn thành với since/for.";
+        }
+        if (text.includes("past perfect") || text.includes("before")) {
+            return "Nên ôn quá khứ hoàn thành và mốc hành động xảy ra trước trong quá khứ.";
+        }
+        if (text.includes("preposition") || text.includes("giới từ")) {
+            return "Nên ôn giới từ thường gặp trong TOEIC: in, on, at, by, until, during.";
+        }
+        if (text.includes("connector") || text.includes("because") || text.includes("although") || text.includes("however")) {
+            return "Nên ôn connectors chỉ nguyên nhân, tương phản, kết quả và mục đích.";
+        }
+        if (text.includes("adjective") || text.includes("adverb") || text.includes("noun") || text.includes("word forms")) {
+            return "Nên ôn word forms: vị trí danh từ, động từ, tính từ và trạng từ.";
+        }
+
+        return "Nên ôn lại cấu trúc ngữ pháp chính của câu và dấu hiệu nhận biết đáp án.";
+    }
+
+    private buildFallbackSingleChoiceExplanation(
+        question: Question,
+        selectedOption: QuestionOption,
+        correctOption: QuestionOption
+    ) {
+        const answerState = selectedOption.isCorrect
+            ? `Bạn đã chọn đúng đáp án "${correctOption.content}".`
+            : `Bạn đã chọn "${selectedOption.content}", nhưng đáp án đúng là "${correctOption.content}".`;
+
+        return [
+            `Cấu trúc ngữ pháp: ${question.explanation || this.getReviewSuggestion(question)}`,
+            `Lý do chọn đáp án ${correctOption.label}: "${correctOption.content}" khớp với dữ liệu đáp án đúng của câu hỏi trong database.`,
+            `Vì sao đáp án đã chọn sai/đúng: ${answerState} ${this.getReviewSuggestion(question)}`,
+        ].join("\n");
+    }
+
+    private async buildSingleChoiceExplanation(
+        question: Question,
+        selectedOption: QuestionOption,
+        correctOption: QuestionOption,
+        options: QuestionOption[]
+    ) {
+        const fallbackExplanation = this.buildFallbackSingleChoiceExplanation(
+            question,
+            selectedOption,
+            correctOption
+        );
+
+        try {
+            const explanation = await generateAnswerExplanation({
+                questionContent: question.content,
+                category: question.category,
+                transcript: question.transcript,
+                selectedOption: {
+                    label: selectedOption.label,
+                    content: selectedOption.content,
+                },
+                correctOption: {
+                    label: correctOption.label,
+                    content: correctOption.content,
+                },
+                options: options.map((option) => ({
+                    label: option.label,
+                    content: option.content,
+                    isCorrect: option.isCorrect,
+                })),
+                existingExplanation: question.explanation,
+            });
+
+            return {
+                explanation,
+                aiHint: explanation,
+                explanationSource: "api",
+            };
+        } catch {
+            return {
+                explanation: fallbackExplanation,
+                aiHint: fallbackExplanation,
+                explanationSource: "fallback",
+            };
+        }
+    }
+
+    private async buildSubmittedSingleChoiceExplanation(
+        question: Question,
+        selectedOption: QuestionOption | null | undefined,
+        correctOption: QuestionOption,
+        options: QuestionOption[]
+    ) {
+        if (selectedOption) {
+            const result = await this.buildSingleChoiceExplanation(
+                question,
+                selectedOption,
+                correctOption,
+                options
+            );
+
+            return result.explanation;
+        }
+
+        const fallbackExplanation = [
+            `Cấu trúc ngữ pháp: ${question.explanation || this.getReviewSuggestion(question)}`,
+            `Lý do chọn đáp án ${correctOption.label}: "${correctOption.content}" là đáp án đúng theo dữ liệu câu hỏi trong database.`,
+            "Vì sao đáp án đã chọn sai/đúng: Bạn chưa chọn đáp án cho câu này.",
+        ].join("\n");
+
+        try {
+            return await generateAnswerExplanation({
+                questionContent: question.content,
+                category: question.category,
+                transcript: question.transcript,
+                selectedOption: {
+                    label: "-",
+                    content: "Chưa chọn đáp án",
+                },
+                correctOption: {
+                    label: correctOption.label,
+                    content: correctOption.content,
+                },
+                options: options.map((option) => ({
+                    label: option.label,
+                    content: option.content,
+                    isCorrect: option.isCorrect,
+                })),
+                existingExplanation: question.explanation,
+            });
+        } catch {
+            return fallbackExplanation;
+        }
     }
 
     // replace the first occurrence of the answer in the transcript with [BLANK],
@@ -424,7 +580,7 @@ export class AttemptService {
 
         const question = await this.questionRepository.findOne({
             where: { id: questionId },
-            select: ["id", "category", "type", "explanation", "transcript"]
+            select: ["id", "category", "type", "content", "explanation", "transcript"]
         });
         if (!question) throw new AppError("Question not found", 404);
         this.ensureQuestionMatchesPracticeMode(attempt, question);
@@ -444,6 +600,13 @@ export class AttemptService {
         if (!correctOption) {
             throw new AppError("Question has no correct option", 400);
         }
+
+        const answerExplanation = await this.buildSingleChoiceExplanation(
+            question,
+            selectedOption,
+            correctOption,
+            options
+        );
 
         await this.attemptAnswerRepository.upsert({
             attemptId,
@@ -465,7 +628,9 @@ export class AttemptService {
             isCorrect: selectedOption.isCorrect,
             correctOptionId: correctOption?.id ?? null,
             correctOption: this.toAnswerOption(correctOption),
-            explanation: question.explanation ?? null,
+            explanation: answerExplanation.explanation,
+            aiHint: answerExplanation.aiHint,
+            explanationSource: answerExplanation.explanationSource,
             transcript: question.transcript ?? null,
         };
     }
@@ -671,6 +836,40 @@ export class AttemptService {
             questions.map((question) => [question.id, question])
         );
 
+        const answerPayloads = await Promise.all(examQuestionIds.map(async (questionId) => {
+            const item = detailedAnswerByQuestionId.get(questionId);
+            const question = item?.question ?? questionById.get(questionId);
+            const correctOption = question?.options?.find((option) => option.isCorrect) ?? null;
+            const selectedOption = item?.selectedOption ??
+                question?.options?.find((option) => option.id === item?.selectedOptionId) ??
+                null;
+            const answered = Boolean(item);
+            const explanation = question?.type === QuestionType.SINGLE_CHOICE && correctOption
+                ? await this.buildSubmittedSingleChoiceExplanation(
+                    question,
+                    selectedOption,
+                    correctOption,
+                    question.options ?? []
+                )
+                : question?.explanation ?? null;
+
+            return {
+                questionId,
+                questionType: question?.type,
+                content: question?.content,
+                selectedOptionId: item?.selectedOptionId ?? null,
+                selectedOption: this.toAnswerOption(selectedOption),
+                answerText: item?.answerText ?? null,
+                correctOptionId: correctOption?.id ?? null,
+                correctOption: this.toAnswerOption(correctOption),
+                correctAnswers: this.getCorrectDictationAnswers(question),
+                result: item?.result ?? "unanswered",
+                answered,
+                explanation,
+                transcript: question?.transcript ?? null
+            };
+        }));
+
         return {
             attempt: savedAttempt,
             scope: {
@@ -686,28 +885,7 @@ export class AttemptService {
                 incorrectOrUnansweredCount: Math.max(totalQuestions - correctCount, 0),
                 score
             },
-            answers: examQuestionIds.map((questionId) => {
-                const item = detailedAnswerByQuestionId.get(questionId);
-                const question = item?.question ?? questionById.get(questionId);
-                const correctOption = question?.options?.find((option) => option.isCorrect) ?? null;
-                const answered = Boolean(item);
-
-                return {
-                    questionId,
-                    questionType: question?.type,
-                    content: question?.content,
-                    selectedOptionId: item?.selectedOptionId ?? null,
-                    selectedOption: this.toAnswerOption(item?.selectedOption),
-                    answerText: item?.answerText ?? null,
-                    correctOptionId: correctOption?.id ?? null,
-                    correctOption: this.toAnswerOption(correctOption),
-                    correctAnswers: this.getCorrectDictationAnswers(question),
-                    result: item?.result ?? "unanswered",
-                    answered,
-                    explanation: question?.explanation ?? null,
-                    transcript: question?.transcript ?? null
-                };
-            })
+            answers: answerPayloads
         };
     }
 }

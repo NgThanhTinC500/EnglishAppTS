@@ -25,7 +25,7 @@ import { AppError } from "../utils/appError";
     controller processes further
 */
 
-// when user choose file, multer will save file to disk 
+// when user choose file, multer will save file to disk
 // and add file information to req.file, then call next() to pass control to the next middleware or route handler. If there is an error during the upload process (e.g., invalid file type, file too large), multer will pass an error to
 
 // create uploads directory if not exist
@@ -43,8 +43,8 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        // uuidv4() generates a unique identifier, Date.now() adds a timestamp, 
-        // and path.extname(file.originalname) preserves the original file extension. 
+        // uuidv4() generates a unique identifier, Date.now() adds a timestamp,
+        // and path.extname(file.originalname) preserves the original file extension.
         // This ensures that each uploaded file has a unique name, preventing overwriting of existing files and maintaining the correct file type.
         // path.extname(file.originalname) returns the file extension (e.g., .jpg, .png)
         const uniqueName = `${uuidv4()}-${Date.now()}${path.extname(file.originalname)}`;
@@ -79,7 +79,7 @@ export const uploadImage = multer({
 });
 
 // Upload only 1 image
-/* 
+/*
 (req, res, next) => {
     multer handle file
 if success:
@@ -92,7 +92,7 @@ export const uploadImageSingle = uploadImage.single("image");
 
 // Middleware  handle error upload
 export const handleUploadImageError = (
-    err: unknown,
+    err: any,
     _req: Request,
     _res: Response,
     next: NextFunction
