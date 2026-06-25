@@ -5,37 +5,44 @@ import * as path from "path";
 import { AppDataSource } from "./data-source";
 import userRouter from "./router/userRouter";
 // import examRouter from "./router/examRouter";
-import questionRouter from "./router/questionRouter";
 import attemptRouter from "./router/attemptRouter";
+import questionRouter from "./router/questionRouter";
 
+import cookieParser from "cookie-parser";
+import cors from "cors";
 import rateLimit from 'express-rate-limit';
 import globalErrorHandler from './controller/errorController';
-import flashcardRouter from "./router/vocabularyRouter";
-import blogRouter from "./router/blogRouter";
 import authRouter from "./router/authRouter";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import topicRouter from "./router/topicRouter";
-import courseRouter from "./router/courseRouter";
-import lessonRouter from "./router/LessonRouter";
-import lectureRouter from "./router/LectureRouter";
+import blogRouter from "./router/blogRouter";
 import commentRouter from './router/commenRouter';
+import courseRouter from "./router/courseRouter";
+import englishChatRouter from "./router/englishChatRouter";
+import forumRouter from "./router/forumRouter";
+import lectureRouter from "./router/LectureRouter";
+import lessonRouter from "./router/LessonRouter";
+import notificationRouter from "./router/notificationRouter";
+import progressRouter from "./router/progressRouter";
 import toeicCollectionRouter from "./router/toeicCollectionRouter";
-import toeicExamSetRouter from "./router/toeicExamSetRouter";
 import toeicExamPartRouter from "./router/toeicExamPartRouter";
+import toeicExamSessionRouter from "./router/toeicExamSessionRouter";
+import toeicExamSetRouter from "./router/toeicExamSetRouter";
 import toeicQuestionGroupRouter from "./router/toeicQuestionGroupRouter";
 import toeicQuestionRouter from "./router/toeicQuestionRouter";
-import toeicExamSessionRouter from "./router/toeicExamSessionRouter";
-import progressRouter from "./router/progressRouter";
-import forumRouter from "./router/forumRouter";
-import notificationRouter from "./router/notificationRouter";
+import topicRouter from "./router/topicRouter";
+import flashcardRouter from "./router/vocabularyRouter";
 import { getCorsOrigin } from "./utils/httpConfig";
-dotenv.config();
-import { createServer } from "http";
-import { initSocket } from "./socket/index";
-import { startToeicSessionExpirationJob } from "./jobs/toeicSessionExpirationJob";
 
+import { createServer } from "http";
+import { startToeicSessionExpirationJob } from "./jobs/toeicSessionExpirationJob";
+import { ensureAdminExists } from "./seeds/createAdmin";
+import { seedCourses } from "./seeds/seedCourses";
+import { seedTopics } from "./seeds/seedTopics";
+import { initSocket } from "./socket/index";
+dotenv.config();
 console.log('NODE_ENV =', process.env.NODE_ENV);
+console.log('SEED_ADMIN_ON_STARTUP =', process.env.SEED_ADMIN_ON_STARTUP);
+console.log('SEED_COURSES_ON_STARTUP =', process.env.SEED_COURSES_ON_STARTUP);
+console.log('SEED_TOPICS_ON_STARTUP =', process.env.SEED_TOPICS_ON_STARTUP);
 const corsOptions = {
   origin: getCorsOrigin(),
   credentials: true,
@@ -44,8 +51,37 @@ const corsOptions = {
 AppDataSource.initialize()
   .then(async () => {
 
+    // Optionally seed admin user on startup (enable with SEED_ADMIN_ON_STARTUP=true)
+    try {
+      if (process.env.SEED_ADMIN_ON_STARTUP === "true") {
+        await ensureAdminExists(AppDataSource);
+      }
+    } catch (err) {
+      console.error("Error ensuring admin user:", err);
+    }
+
+    try {
+      if (process.env.SEED_COURSES_ON_STARTUP === "true") {
+        await seedCourses();
+      }
+    } catch (err) {
+      console.error("Error seeding courses:", err);
+    }
+
+    try {
+      if (process.env.SEED_TOPICS_ON_STARTUP === "true") {
+        await seedTopics();
+      }
+    } catch (err) {
+      console.error("Error seeding topics:", err);
+    }
+
     // create express app
     const app = express();
+    // Trust first proxy (e.g., Render, Vercel, or other reverse proxies)
+    // so that express and express-rate-limit read the correct client IP
+    // from the X-Forwarded-For header.
+    app.set('trust proxy', 1);
     const server = createServer(app);
 
     initSocket(server);
@@ -63,7 +99,7 @@ AppDataSource.initialize()
 
     app.use(cors(corsOptions));
     app.use(express.json());
-    
+
     // cookieParser to read cookies from incoming requests,
     //  allowing us to access them via req.cookies in our route handlers.
     app.use(cookieParser());
@@ -82,6 +118,7 @@ AppDataSource.initialize()
     app.use("/api/v1", lessonRouter);
     app.use("/api/v1", lectureRouter);
     app.use("/api/v1", commentRouter);
+    app.use("/api/v1", englishChatRouter);
     app.use("/api/v1/toeic-collections", toeicCollectionRouter);
     app.use("/api/v1", toeicExamSetRouter);
     app.use("/api/v1", toeicExamPartRouter);
