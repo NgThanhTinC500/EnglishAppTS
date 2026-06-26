@@ -83,10 +83,10 @@ export class TopicService {
         });
         if (!topic) throw new AppError("Không tìm thấy topic", 404);
 
-        const examCount = await this.getExamCountByTopic(topicId);
-        if (examCount > 0) {
-            throw new AppError("Không thể xóa topic sau khi đã tạo đề thi", 400);
-        }
+        // const examCount = await this.getExamCountByTopic(topicId);
+        // if (examCount > 0) {
+        //     throw new AppError("Không thể xóa topic sau khi đã tạo đề thi", 400);
+        // }
 
         await this.topicRepository.delete(topicId);
     }
