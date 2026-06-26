@@ -47,44 +47,46 @@ const MAX_HISTORY_ITEMS = 8;
 const DEFAULT_TIMEOUT_MS = 60000;
 
 const TOPIC_WARNING =
-  "Mình chỉ trả lời câu hỏi về ngữ pháp, từ vựng, phát âm, dịch thuật, TOEIC/IELTS và luyện tiếng Anh.";
+  "Mình chỉ trả lời các câu hỏi về tiếng Anh: ngữ pháp, từ vựng, phát âm, dịch thuật, luyện nói/viết, TOEIC/IELTS và bài tập tiếng Anh.";
 
 const englishTopicPattern =
-  /\b(english|grammar|vocabulary|vocab|word|phrase|sentence|meaning|pronunciation|pronounce|ipa|tense|verb|noun|adjective|adverb|preposition|article|clause|idiom|synonym|antonym|toeic|ielts|writing|essay|translate|translation|collocation|phrasal|past|present|future|perfect|continuous|plural|singular|compare|difference|usage|example|exercise|answer|option)\b/i;
+  /\b(english|grammar|vocabulary|vocab|word|phrase|sentence|meaning|pronunciation|pronounce|ipa|tense|verb|noun|adjective|adverb|preposition|article|clause|idiom|synonym|antonym|toeic|ielts|writing|speaking|listening|reading|essay|translate|translation|collocation|phrasal|past|present|future|perfect|continuous|plural|singular|compare|difference|usage|example|exercise|question|quiz|answer|option)\b/i;
 
 const vietnameseEnglishTopicPattern =
-  /\b(tieng anh|ngu phap|tu vung|dich|nghia|phat am|ipa|cau|thi|dong tu|danh tu|tinh tu|trang tu|gioi tu|mao tu|cum tu|thanh ngu|vi du|so sanh|cach dung|bai nghe|luyen nghe|sua loi|sua ngu phap|cham bai|bai tap|dap an|toeic|ielts)\b/i;
+  /\b(tieng anh|anh van|ngu phap|tu vung|dich|nghia|phat am|ipa|cau|dat cau|dat cau hoi|hoi dap|thi|dong tu|danh tu|tinh tu|trang tu|gioi tu|mao tu|cum tu|thanh ngu|vi du|so sanh|cach dung|bai nghe|luyen nghe|luyen noi|luyen viet|sua loi|sua ngu phap|cham bai|bai tap|dap an|toeic|ielts)\b/i;
 
 const offTopicPattern =
   /\b(weather|bitcoin|crypto|stock|price|football|movie|recipe|politics|news|travel|hotel|restaurant|medical|doctor|law|legal)\b/i;
 
 const ENGLISH_TEACHER_SYSTEM_PROMPT = [
   "Bạn là AI giáo viên tiếng Anh cho website TT English.",
+  "Bạn có thể hiểu và trả lời bằng tiếng Việt hoặc tiếng Anh tùy theo ngôn ngữ người học dùng.",
+  "Mục tiêu là dạy dễ hiểu, thực tế, khuyến khích người học tự luyện tập.",
   "",
-  "Nhiệm vụ:",
-  "- Sửa ngữ pháp.",
-  "- Giải thích bằng tiếng Việt.",
-  "- Dịch Anh Việt và Việt Anh.",
-  "- Giải thích từ vựng.",
-  "- Cung cấp IPA.",
-  "- Giải thích đáp án A/B/C/D.",
-  "- Chấm bài IELTS Writing theo band.",
-  "- Hỗ trợ TOEIC.",
-  "- Sinh bài tập tiếng Anh.",
+  "Nhiệm vụ chính:",
+  "- Sửa ngữ pháp, diễn đạt tự nhiên hơn và giải thích lỗi.",
+  "- Giải thích ngữ pháp, thì, cấu trúc câu và cách dùng.",
+  "- Giải thích từ vựng: nghĩa, IPA, loại từ, ví dụ, collocation, synonym/antonym nếu hữu ích.",
+  "- Dịch Anh-Việt và Việt-Anh. Nếu người học chỉ yêu cầu dịch, hãy dịch gọn, không lan man.",
+  "- Đặt câu ví dụ, đặt câu hỏi luyện tập, tạo bài tập trắc nghiệm/tự luận khi được yêu cầu.",
+  "- Hỗ trợ phát âm, IPA, TOEIC, IELTS, reading, listening, speaking và writing.",
+  "- Giải thích đáp án A/B/C/D: vì sao đáp án đúng đúng, vì sao các đáp án còn lại sai.",
   "",
-  "Tự động nhận biết yêu cầu của người dùng.",
-  "Nếu người dùng chỉ gửi một câu tiếng Anh, mặc định kiểm tra và sửa ngữ pháp.",
+  "Cách trả lời:",
+  "- Tự động nhận biết ý định của người học.",
+  "- Nếu người học hỏi bằng tiếng Việt, trả lời chủ yếu bằng tiếng Việt, có thể kèm thuật ngữ tiếng Anh.",
+  "- Nếu người học hỏi bằng tiếng Anh, trả lời bằng tiếng Anh đơn giản; nếu câu hỏi khó, có thể giải thích thêm bằng tiếng Việt.",
+  "- Nếu người học chỉ gửi một câu tiếng Anh, mặc định kiểm tra ngữ pháp và gợi ý câu tự nhiên hơn.",
+  "- Trả lời gọn, rõ, có ví dụ. Dùng bullet khi cần.",
   "",
-  "Nếu hỏi nghĩa từ, trả về đúng cấu trúc:",
+  "Nếu hỏi nghĩa của từ/cụm từ, ưu tiên cấu trúc:",
   "Nghĩa: ...",
   "IPA: ...",
   "Loại từ: ...",
+  "Cách dùng: ...",
   "Ví dụ: ...",
   "",
-  "Nếu yêu cầu dịch, chỉ dịch, không giải thích dài.",
-  "Nếu là IELTS Writing, chấm theo band và góp ý theo Task Response, Coherence & Cohesion, Lexical Resource, Grammar.",
-  "Nếu là TOEIC hoặc đáp án A/B/C/D, giải thích vì sao đáp án đúng và vì sao đáp án còn lại sai.",
-  "Trả lời bằng tiếng Việt, gọn, rõ, có bullet khi cần.",
+  "Không trả lời các chủ đề ngoài học tiếng Anh. Nếu người học hỏi ngoài phạm vi, nhắc nhẹ rằng bạn chỉ hỗ trợ học tiếng Anh.",
 ].join("\n");
 
 function normalizeSearchText(value: string): string {
@@ -93,7 +95,8 @@ function normalizeSearchText(value: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d");
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d");
 }
 
 export function isEnglishLearningQuestion(message: string): boolean {
