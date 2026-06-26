@@ -4,7 +4,6 @@
         const commentService = new CommentService();
         // JOIN ROOM
         socket.on("comment:join", (lectureId: number) => {
-            console.log(`Socket ${socket.id} joined lecture ${lectureId}`);
             // TẠO ROOM
             socket.join(`lecture:${lectureId}`);
         });
@@ -22,7 +21,6 @@
                     data.parentCommentId ?? undefined
                 );
                 // Broadcast cho tất cả user trong room
-                // console.log("Comment created:", comment); // ← thêm dòng này
                 io.to(`lecture:${data.lectureId}`).emit("comment:new", comment);
             } catch (error) {
                 socket.emit("comment:error", { message: "Gửi comment thất bại" + error });

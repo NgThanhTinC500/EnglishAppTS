@@ -62,7 +62,7 @@ function getPostgresOptions(): Partial<PostgresConnectionOptions> {
   if (missingKeys.length > 0) {
     throw new Error(
       `Missing database environment variables: ${missingKeys.join(", ")}. ` +
-        "Set DATABASE_URL or all POSTGRES_* variables before starting the server or running seeds."
+        "Set DATABASE_URL or all POSTGRES_* variables before starting the server."
     );
   }
 

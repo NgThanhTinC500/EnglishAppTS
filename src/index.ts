@@ -34,15 +34,8 @@ import { getCorsOrigin } from "./utils/httpConfig";
 
 import { createServer } from "http";
 import { startToeicSessionExpirationJob } from "./jobs/toeicSessionExpirationJob";
-import { ensureAdminExists } from "./seeds/createAdmin";
-import { seedCourses } from "./seeds/seedCourses";
-import { seedTopics } from "./seeds/seedTopics";
 import { initSocket } from "./socket/index";
 dotenv.config();
-console.log('NODE_ENV =', process.env.NODE_ENV);
-console.log('SEED_ADMIN_ON_STARTUP =', process.env.SEED_ADMIN_ON_STARTUP);
-console.log('SEED_COURSES_ON_STARTUP =', process.env.SEED_COURSES_ON_STARTUP);
-console.log('SEED_TOPICS_ON_STARTUP =', process.env.SEED_TOPICS_ON_STARTUP);
 const corsOptions = {
   origin: getCorsOrigin(),
   credentials: true,
@@ -50,32 +43,6 @@ const corsOptions = {
 
 AppDataSource.initialize()
   .then(async () => {
-
-    // Optionally seed admin user on startup (enable with SEED_ADMIN_ON_STARTUP=true)
-    try {
-      if (process.env.SEED_ADMIN_ON_STARTUP === "true") {
-        await ensureAdminExists(AppDataSource);
-      }
-    } catch (err) {
-      console.error("Error ensuring admin user:", err);
-    }
-
-    try {
-      if (process.env.SEED_COURSES_ON_STARTUP === "true") {
-        await seedCourses();
-      }
-    } catch (err) {
-      console.error("Error seeding courses:", err);
-    }
-
-    try {
-      if (process.env.SEED_TOPICS_ON_STARTUP === "true") {
-        await seedTopics();
-      }
-    } catch (err) {
-      console.error("Error seeding topics:", err);
-    }
-
     // create express app
     const app = express();
     // Trust first proxy (e.g., Render, Vercel, or other reverse proxies)
@@ -139,4 +106,4 @@ AppDataSource.initialize()
 
 
   })
-  .catch((error) => console.log(error));
+  .catch((error) => console.error(error));
