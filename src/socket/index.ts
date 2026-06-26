@@ -89,17 +89,11 @@ export const initSocket = (server: HTTPServer): void => {
     });
 
     io.on("connection", (socket) => {
-        console.log("a user connected:", socket.id);
-
         // Socket đã xác thực sẽ vào room riêng để nhận notification cá nhân.
         if (socket.data.user?.id) {
             socket.join(`user:${socket.data.user.id}`);
         }
 
         registerCommentSocket(io, socket);
-
-        socket.on("disconnect", () => {
-            console.log("user disconnected:", socket.id);
-        });
     });
 };
