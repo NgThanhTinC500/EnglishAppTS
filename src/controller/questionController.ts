@@ -30,7 +30,7 @@ export class QuestionController {
         }
 
         if (req.file) {
-            payload.audioUrl = `/uploads/audio/${req.file.filename}`;
+            payload.audioUrl = req.file.path || req.file.filename;
             payload.audioFileName = req.file.originalname;
         }
 

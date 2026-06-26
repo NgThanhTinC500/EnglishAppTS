@@ -34,10 +34,11 @@ export class BlogController {
 
     createBlog = catchAsync(async (req: Request, res: Response) => {
         const imageFile = req.file;
+        const uploadedImageUrl = imageFile ? imageFile.path || imageFile.filename : undefined;
         const newBlog = await this.blogService.createBlog({
             ...this.pickBlogPayload(req.body, true),
-            image: imageFile ? imageFile.filename : req.body.image,
-            coverImage: req.body.coverImage || (imageFile ? imageFile.filename : req.body.image),
+            image: uploadedImageUrl || req.body.image,
+            coverImage: req.body.coverImage || uploadedImageUrl || req.body.image,
             author: req.user,
         });
 
@@ -50,10 +51,11 @@ export class BlogController {
     updateBlog = catchAsync(async (req: Request, res: Response) => {
         const blogId = Number(req.params.id);
         const imageFile = req.file;
+        const uploadedImageUrl = imageFile ? imageFile.path || imageFile.filename : undefined;
         const updateData = {
             ...this.pickBlogPayload(req.body, false),
-            image: imageFile ? imageFile.filename : req.body.image,
-            coverImage: req.body.coverImage || (imageFile ? imageFile.filename : req.body.image),
+            image: uploadedImageUrl || req.body.image,
+            coverImage: req.body.coverImage || uploadedImageUrl || req.body.image,
         };
 
         const updatedBlog = await this.blogService.updateBlog(blogId, updateData);

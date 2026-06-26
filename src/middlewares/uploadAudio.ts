@@ -1,25 +1,8 @@
 import multer from "multer";
-import * as fs from "fs";
-import * as path from "path";
 import { NextFunction, Request, Response } from "express";
-import { v4 as uuidv4 } from "uuid";
 
 //similar to uploadImage.ts, but for audio files
-const uploadDir = path.resolve(process.cwd(), "public/audio");
-
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (_req, file, cb) => {
-        const uniqueName = `${uuidv4()}-${Date.now()}${path.extname(file.originalname)}`;
-        cb(null, uniqueName);
-    }
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedMimes = [

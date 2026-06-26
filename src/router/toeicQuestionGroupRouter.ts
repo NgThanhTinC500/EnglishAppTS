@@ -5,6 +5,7 @@ import {
     handleUploadToeicMediaError,
     uploadToeicGroupMedia,
 } from "../middlewares/uploadToeicMedia";
+import { uploadFieldsToCloudinary } from "../utils/cloudinary";
 import { validateRequest } from "../middlewares/validateRequest";
 import {
     createToeicQuestionGroupSchema,
@@ -17,6 +18,16 @@ import {
 const toeicQuestionGroupRouter = Router();
 const authController = new AuthController();
 const toeicQuestionGroupController = new ToeicQuestionGroupController();
+const uploadToeicMediaToCloudinary = uploadFieldsToCloudinary({
+    audio: {
+        folder: "english-app/toeic/audio",
+        resourceType: "video",
+    },
+    images: {
+        folder: "english-app/toeic/images",
+        resourceType: "image",
+    },
+});
 
 
 
@@ -32,6 +43,7 @@ toeicQuestionGroupRouter.post(
     authController.restrictTo("admin"),
     uploadToeicGroupMedia,
     handleUploadToeicMediaError,
+    uploadToeicMediaToCloudinary,
     validateRequest(createToeicQuestionGroupSchema),
     toeicQuestionGroupController.create
 );
@@ -55,6 +67,7 @@ toeicQuestionGroupRouter.patch(
     authController.restrictTo("admin"),
     uploadToeicGroupMedia,
     handleUploadToeicMediaError,
+    uploadToeicMediaToCloudinary,
     toeicQuestionGroupController.updateMedia
 );
 toeicQuestionGroupRouter.delete(

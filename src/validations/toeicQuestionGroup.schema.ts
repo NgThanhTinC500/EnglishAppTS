@@ -26,6 +26,7 @@ export const createToeicQuestionGroupSchema = z.object({
         audioUrl: nullableStringSchema.optional(),
         audioDurationSeconds: nullableDurationSchema.optional(),
         explanation: nullableStringSchema.optional(),
+        imageUrls: z.union([z.string().trim(), z.array(z.string().trim())]).optional(),
         images: z.array(imageSchema).optional(),
     }).strict(),
     params: examPartParamsSchema,

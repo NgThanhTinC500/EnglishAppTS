@@ -10,6 +10,20 @@ export class ToeicQuestionGroupController {
         this.toeicQuestionGroupService = new ToeicQuestionGroupService();
     }
 
+    private normalizeOptionalUrl(value: unknown) {
+        return typeof value === "string" && value.trim() ? value.trim() : undefined;
+    }
+
+    private getBodyImageUrls(body: Record<string, unknown>) {
+        const value = body.imageUrls;
+        const values = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+
+        return values
+            .flatMap((item) => String(item).split("\n"))
+            .map((item) => item.trim())
+            .filter(Boolean);
+    }
+
     getAllByPart = catchAsync(async (req: Request, res: Response): Promise<void> => {
         const examPartId = Number(req.params.examPartId);
         const groups = await this.toeicQuestionGroupService.getAllByPart(examPartId);
@@ -35,8 +49,12 @@ export class ToeicQuestionGroupController {
         const files = req.files as
             | { audio?: Express.Multer.File[]; images?: Express.Multer.File[] }
             | undefined;
-        const audioUrl = files?.audio?.[0] ? toToeicMediaUrl(files.audio[0]) : req.body.audioUrl;
-        const imageUrls = files?.images?.map((file) => toToeicMediaUrl(file)) ?? [];
+        const uploadedAudioUrl = files?.audio?.[0] ? toToeicMediaUrl(files.audio[0]) : undefined;
+        const audioUrl = uploadedAudioUrl || this.normalizeOptionalUrl(req.body.audioUrl);
+        const imageUrls = [
+            ...this.getBodyImageUrls(req.body),
+            ...(files?.images?.map((file) => toToeicMediaUrl(file)) ?? []),
+        ];
         const group = await this.toeicQuestionGroupService.create(examPartId, {
             ...req.body,
             audioUrl: audioUrl ?? null,
@@ -67,8 +85,12 @@ export class ToeicQuestionGroupController {
         const files = req.files as
             | { audio?: Express.Multer.File[]; images?: Express.Multer.File[] }
             | undefined;
-        const audioUrl = files?.audio?.[0] ? toToeicMediaUrl(files.audio[0]) : undefined;
-        const imageUrls = files?.images?.map((file) => toToeicMediaUrl(file)) ?? [];
+        const uploadedAudioUrl = files?.audio?.[0] ? toToeicMediaUrl(files.audio[0]) : undefined;
+        const audioUrl = uploadedAudioUrl || this.normalizeOptionalUrl(req.body.audioUrl);
+        const imageUrls = [
+            ...this.getBodyImageUrls(req.body),
+            ...(files?.images?.map((file) => toToeicMediaUrl(file)) ?? []),
+        ];
 
         const group = await this.toeicQuestionGroupService.updateMedia(id, {
             audioUrl,

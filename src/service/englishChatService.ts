@@ -41,27 +41,37 @@ const DEFAULT_AI_HINT_API_URL = "https://text.pollinations.ai";
 const DEFAULT_MODEL = "openai";
 const MAX_MESSAGE_LENGTH = 700;
 const MAX_HISTORY_ITEMS = 8;
-const DEFAULT_TIMEOUT_MS = 3500;
+const DEFAULT_TIMEOUT_MS = 10000;
 const TOPIC_WARNING =
-  "Mình chỉ trả lời câu hỏi về ngữ pháp và từ vựng tiếng Anh. Hãy hỏi về nghĩa từ, cách dùng, cấu trúc câu hoặc ví dụ tiếng Anh nhé.";
+  "Mình chỉ trả lời câu hỏi về ngữ pháp, từ vựng, phát âm và luyện thi tiếng Anh. Bạn hãy hỏi về nghĩa từ, cách dùng, cấu trúc câu hoặc ví dụ tiếng Anh nhé.";
 
 const englishTopicPattern =
   /\b(english|grammar|vocabulary|vocab|word|phrase|sentence|meaning|pronunciation|pronounce|tense|verb|noun|adjective|adverb|preposition|article|clause|idiom|synonym|antonym|toeic|ielts|translate|translation|collocation|phrasal|past|present|future|perfect|continuous|plural|singular|compare|difference|usage|example)\b/i;
 
 const vietnameseEnglishTopicPattern =
-  /(tiếng anh|tieng anh|ngữ pháp|ngu phap|từ vựng|tu vung|dịch|dich|nghĩa|nghia|phát âm|phat am|câu|cau|thì |thi |động từ|dong tu|danh từ|danh tu|tính từ|tinh tu|trạng từ|trang tu|giới từ|gioi tu|mạo từ|mao tu|cụm từ|cum tu|thành ngữ|thanh ngu|ví dụ|vi du|so sánh|so sanh|cách dùng|cach dung)/i;
+  /\b(tieng anh|ngu phap|tu vung|dich|nghia|phat am|cau|thi|dong tu|danh tu|tinh tu|trang tu|gioi tu|mao tu|cum tu|thanh ngu|vi du|so sanh|cach dung|bai nghe|luyen nghe|toeic|ielts)\b/i;
 
 const offTopicPattern =
   /\b(weather|bitcoin|crypto|stock|price|football|movie|recipe|code|programming|politics|news|game|music|travel|hotel|restaurant|medical|doctor|law|legal|math|history|science)\b/i;
 
+function normalizeSearchText(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d");
+}
+
 export function isEnglishLearningQuestion(message: string): boolean {
-  const normalizedMessage = message.trim();
+  const normalizedMessage = normalizeSearchText(message);
   if (!normalizedMessage) return false;
 
   if (offTopicPattern.test(normalizedMessage)) return false;
 
   const looksLikeShortVocabularyItem =
-    /^[A-Za-z][A-Za-z\s'-]{0,60}$/.test(normalizedMessage) &&
+    /^[a-z][a-z\s'-]{0,60}$/.test(normalizedMessage) &&
     normalizedMessage.split(/\s+/).length <= 4;
 
   return (
@@ -91,17 +101,22 @@ function normalizeHistory(history: unknown): EnglishChatMessage[] {
     }));
 }
 
-function getPollinationsUrl(): string {
-  const baseUrl = (
-    process.env.AI_HINT_API_URL || DEFAULT_AI_HINT_API_URL
-  ).replace(/\/+$/, "");
+function getPollinationsBaseUrl(): string {
+  return (process.env.AI_HINT_API_URL || DEFAULT_AI_HINT_API_URL)
+    .replace(/\/+$/, "")
+    .replace(/\/openai$/i, "");
+}
 
-  return baseUrl.endsWith("/openai") ? baseUrl : `${baseUrl}/openai`;
+function getPollinationsOpenAiUrl(): string {
+  const baseUrl = getPollinationsBaseUrl();
+  return `${baseUrl}/openai`;
 }
 
 function getTimeoutMs(): number {
   const timeout = Number(process.env.AI_HINT_TIMEOUT_MS);
-  return Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_TIMEOUT_MS;
+  return Number.isFinite(timeout) && timeout > 0
+    ? Math.max(timeout, DEFAULT_TIMEOUT_MS)
+    : DEFAULT_TIMEOUT_MS;
 }
 
 function getAnswer(data: ChatCompletionResponse): string {
@@ -113,16 +128,25 @@ function getAnswer(data: ChatCompletionResponse): string {
   );
 }
 
-async function requestChatCompletion(
+async function parseCompletionResponse(response: Response): Promise<ChatCompletionResponse> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return (await response.json()) as ChatCompletionResponse;
+  }
+
+  return { text: (await response.text()).trim() };
+}
+
+async function requestOpenAiCompatibleCompletion(
   messages: EnglishChatMessage[],
-  maxTokens = 280,
-  temperature = 0.3
+  maxTokens: number,
+  temperature: number
 ): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), getTimeoutMs());
 
   try {
-    const response = await fetch(getPollinationsUrl(), {
+    const response = await fetch(getPollinationsOpenAiUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -140,16 +164,77 @@ async function requestChatCompletion(
       throw new AppError("Không thể gọi API chatbot lúc này.", 502);
     }
 
-    const data = (await response.json()) as ChatCompletionResponse;
-    const answer = getAnswer(data);
-
+    const answer = getAnswer(await parseCompletionResponse(response));
     if (!answer) {
       throw new AppError("API chatbot không trả về nội dung.", 502);
     }
 
     return answer;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError("Không thể gọi API chatbot lúc này.", 502);
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+function buildPlainPrompt(messages: EnglishChatMessage[]) {
+  return messages
+    .map((item) => {
+      const label =
+        item.role === "system"
+          ? "Instruction"
+          : item.role === "assistant"
+            ? "Assistant"
+            : "User";
+      return `${label}: ${item.content}`;
+    })
+    .join("\n\n");
+}
+
+async function requestTextCompletionFallback(
+  messages: EnglishChatMessage[]
+): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), getTimeoutMs());
+  const url = new URL(
+    `${getPollinationsBaseUrl()}/${encodeURIComponent(buildPlainPrompt(messages))}`
+  );
+  url.searchParams.set("model", process.env.AI_HINT_MODEL || DEFAULT_MODEL);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+
+    if (!response.ok) {
+      throw new AppError("Không thể gọi API chatbot lúc này.", 502);
+    }
+
+    const answer = (await response.text()).trim();
+    if (!answer) {
+      throw new AppError("API chatbot không trả về nội dung.", 502);
+    }
+
+    return answer;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError("Chatbot đang bận, vui lòng thử lại sau.", 502);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function requestChatCompletion(
+  messages: EnglishChatMessage[],
+  maxTokens = 280,
+  temperature = 0.3
+): Promise<string> {
+  try {
+    return await requestOpenAiCompatibleCompletion(messages, maxTokens, temperature);
+  } catch (error) {
+    if (error instanceof AppError && error.statusCode >= 500) {
+      return requestTextCompletionFallback(messages);
+    }
+    throw error;
   }
 }
 
@@ -218,7 +303,7 @@ export async function askEnglishChat(
       {
         role: "system",
         content:
-          "Bạn là trợ lý học tiếng Anh cho website TT English. Chỉ trả lời các câu hỏi liên quan đến ngữ pháp tiếng Anh, từ vựng, nghĩa từ, cách dùng, ví dụ câu, phát âm, collocation, phrasal verbs, TOEIC/IELTS English. Nếu người dùng hỏi chủ đề khác, từ chối lịch sự bằng tiếng Việt trong 1 câu. Câu trả lời phải ngắn gọn, dễ đọc, format đẹp bằng markdown tối giản: dùng tiêu đề đậm, bullet ngắn, ví dụ tiếng Anh rõ ràng. Không trả lời lan man.",
+          "Bạn là trợ lý học tiếng Anh cho website TT English. Chỉ trả lời câu hỏi liên quan đến ngữ pháp tiếng Anh, từ vựng, nghĩa từ, cách dùng, ví dụ câu, phát âm, collocation, phrasal verbs, TOEIC/IELTS English. Nếu người dùng hỏi chủ đề khác, từ chối lịch sự bằng tiếng Việt trong 1 câu. Câu trả lời phải ngắn gọn, dễ đọc, format markdown tối giản: dùng tiêu đề đậm, bullet ngắn, ví dụ tiếng Anh rõ ràng. Không trả lời lan man.",
       },
       ...normalizeHistory(history),
       { role: "user", content: cleanMessage },

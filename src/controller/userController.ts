@@ -38,7 +38,7 @@ export class UserController {
       ...req.body,
       ...(req.file
         ? {
-            photo: `/uploads/img/${req.file.filename}`,
+            photo: req.file.path || req.file.filename,
           }
         : {}),
     };

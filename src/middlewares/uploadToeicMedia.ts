@@ -1,17 +1,5 @@
 import multer from "multer";
-import * as fs from "fs";
-import * as path from "path";
 import { NextFunction, Request, Response } from "express";
-import { v4 as uuidv4 } from "uuid";
-
-const audioDir = path.resolve(process.cwd(), "public/toeic/audio");
-const imageDir = path.resolve(process.cwd(), "public/toeic/images");
-
-[audioDir, imageDir].forEach((dir) => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-});
 
 const audioMimes = new Set([
     "audio/mpeg",
@@ -39,17 +27,7 @@ function isImage(file: Express.Multer.File) {
     return file.fieldname === "images" && imageMimes.has(file.mimetype);
 }
 
-const storage = multer.diskStorage({
-    destination: (_req, file, cb) => {
-        if (isAudio(file)) return cb(null, audioDir);
-        if (isImage(file)) return cb(null, imageDir);
-        return cb(new Error(`Invalid TOEIC media field or type: ${file.fieldname}/${file.mimetype}`), "");
-    },
-    filename: (_req, file, cb) => {
-        const uniqueName = `${uuidv4()}-${Date.now()}${path.extname(file.originalname)}`;
-        cb(null, uniqueName);
-    },
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     if (isAudio(file) || isImage(file)) {
@@ -102,6 +80,5 @@ export function handleUploadToeicMediaError(
 }
 
 export function toToeicMediaUrl(file: Express.Multer.File) {
-    const folder = file.fieldname === "audio" ? "audio" : "images";
-    return `/uploads/toeic/${folder}/${file.filename}`;
+    return file.path || file.filename;
 }

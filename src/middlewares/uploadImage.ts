@@ -1,8 +1,5 @@
 import multer from "multer"; // handle multipart/form-data, which is primarily used for uploading files
-import path from "path"; // provides utilities for working with file and directory paths
-import fs from "fs"; // provides an API for interacting with the file system in a manner closely modeled around standard POSIX functions
 import { NextFunction, Request, Response } from "express";
-import { v4 as uuidv4 } from "uuid";
 import { AppError } from "../utils/appError";
 
 /*
@@ -28,29 +25,7 @@ import { AppError } from "../utils/appError";
 // when user choose file, multer will save file to disk
 // and add file information to req.file, then call next() to pass control to the next middleware or route handler. If there is an error during the upload process (e.g., invalid file type, file too large), multer will pass an error to
 
-// create uploads directory if not exist
-const uploadDir = path.resolve(__dirname, "../public/img");
-
-// Check if the upload directory exists, if not, create it
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// configure storage
-// disStorage: save file to disk
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        // uuidv4() generates a unique identifier, Date.now() adds a timestamp,
-        // and path.extname(file.originalname) preserves the original file extension.
-        // This ensures that each uploaded file has a unique name, preventing overwriting of existing files and maintaining the correct file type.
-        // path.extname(file.originalname) returns the file extension (e.g., .jpg, .png)
-        const uniqueName = `${uuidv4()}-${Date.now()}${path.extname(file.originalname)}`;
-        cb(null, uniqueName);
-    }
-});
+const storage = multer.memoryStorage();
 
 // Only allow image files
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {

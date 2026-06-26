@@ -1,3 +1,4 @@
+import "./config/loadEnv";
 import * as dotenv from 'dotenv';
 import express from "express";
 import * as path from "path";
