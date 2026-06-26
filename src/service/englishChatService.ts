@@ -32,27 +32,60 @@ interface ChatCompletionResponse {
     message?: {
       content?: string;
     };
+    text?: string;
   }>;
   text?: string;
   content?: string;
+  answer?: string;
 }
 
 const DEFAULT_AI_HINT_API_URL = "https://text.pollinations.ai";
-const DEFAULT_MODEL = "openai";
-const MAX_MESSAGE_LENGTH = 700;
+const DEFAULT_POLLINATIONS_MODEL = "openai";
+const DEFAULT_LOCAL_MODEL = "local-gguf";
+const MAX_MESSAGE_LENGTH = 4000;
 const MAX_HISTORY_ITEMS = 8;
-const DEFAULT_TIMEOUT_MS = 10000;
+const DEFAULT_TIMEOUT_MS = 60000;
+
 const TOPIC_WARNING =
-  "Mình chỉ trả lời câu hỏi về ngữ pháp, từ vựng, phát âm và luyện thi tiếng Anh. Bạn hãy hỏi về nghĩa từ, cách dùng, cấu trúc câu hoặc ví dụ tiếng Anh nhé.";
+  "Mình chỉ trả lời câu hỏi về ngữ pháp, từ vựng, phát âm, dịch thuật, TOEIC/IELTS và luyện tiếng Anh.";
 
 const englishTopicPattern =
-  /\b(english|grammar|vocabulary|vocab|word|phrase|sentence|meaning|pronunciation|pronounce|tense|verb|noun|adjective|adverb|preposition|article|clause|idiom|synonym|antonym|toeic|ielts|translate|translation|collocation|phrasal|past|present|future|perfect|continuous|plural|singular|compare|difference|usage|example)\b/i;
+  /\b(english|grammar|vocabulary|vocab|word|phrase|sentence|meaning|pronunciation|pronounce|ipa|tense|verb|noun|adjective|adverb|preposition|article|clause|idiom|synonym|antonym|toeic|ielts|writing|essay|translate|translation|collocation|phrasal|past|present|future|perfect|continuous|plural|singular|compare|difference|usage|example|exercise|answer|option)\b/i;
 
 const vietnameseEnglishTopicPattern =
-  /\b(tieng anh|ngu phap|tu vung|dich|nghia|phat am|cau|thi|dong tu|danh tu|tinh tu|trang tu|gioi tu|mao tu|cum tu|thanh ngu|vi du|so sanh|cach dung|bai nghe|luyen nghe|toeic|ielts)\b/i;
+  /\b(tieng anh|ngu phap|tu vung|dich|nghia|phat am|ipa|cau|thi|dong tu|danh tu|tinh tu|trang tu|gioi tu|mao tu|cum tu|thanh ngu|vi du|so sanh|cach dung|bai nghe|luyen nghe|sua loi|sua ngu phap|cham bai|bai tap|dap an|toeic|ielts)\b/i;
 
 const offTopicPattern =
-  /\b(weather|bitcoin|crypto|stock|price|football|movie|recipe|code|programming|politics|news|game|music|travel|hotel|restaurant|medical|doctor|law|legal|math|history|science)\b/i;
+  /\b(weather|bitcoin|crypto|stock|price|football|movie|recipe|politics|news|travel|hotel|restaurant|medical|doctor|law|legal)\b/i;
+
+const ENGLISH_TEACHER_SYSTEM_PROMPT = [
+  "Bạn là AI giáo viên tiếng Anh cho website TT English.",
+  "",
+  "Nhiệm vụ:",
+  "- Sửa ngữ pháp.",
+  "- Giải thích bằng tiếng Việt.",
+  "- Dịch Anh Việt và Việt Anh.",
+  "- Giải thích từ vựng.",
+  "- Cung cấp IPA.",
+  "- Giải thích đáp án A/B/C/D.",
+  "- Chấm bài IELTS Writing theo band.",
+  "- Hỗ trợ TOEIC.",
+  "- Sinh bài tập tiếng Anh.",
+  "",
+  "Tự động nhận biết yêu cầu của người dùng.",
+  "Nếu người dùng chỉ gửi một câu tiếng Anh, mặc định kiểm tra và sửa ngữ pháp.",
+  "",
+  "Nếu hỏi nghĩa từ, trả về đúng cấu trúc:",
+  "Nghĩa: ...",
+  "IPA: ...",
+  "Loại từ: ...",
+  "Ví dụ: ...",
+  "",
+  "Nếu yêu cầu dịch, chỉ dịch, không giải thích dài.",
+  "Nếu là IELTS Writing, chấm theo band và góp ý theo Task Response, Coherence & Cohesion, Lexical Resource, Grammar.",
+  "Nếu là TOEIC hoặc đáp án A/B/C/D, giải thích vì sao đáp án đúng và vì sao đáp án còn lại sai.",
+  "Trả lời bằng tiếng Việt, gọn, rõ, có bullet khi cần.",
+].join("\n");
 
 function normalizeSearchText(value: string): string {
   return value
@@ -60,23 +93,23 @@ function normalizeSearchText(value: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "d");
+    .replace(/đ/g, "d");
 }
 
 export function isEnglishLearningQuestion(message: string): boolean {
   const normalizedMessage = normalizeSearchText(message);
   if (!normalizedMessage) return false;
-
   if (offTopicPattern.test(normalizedMessage)) return false;
 
+  const looksLikeEnglishSentence = /[a-z]/i.test(message) && message.length <= MAX_MESSAGE_LENGTH;
   const looksLikeShortVocabularyItem =
-    /^[a-z][a-z\s'-]{0,60}$/.test(normalizedMessage) &&
-    normalizedMessage.split(/\s+/).length <= 4;
+    /^[a-z][a-z\s'-]{0,80}$/.test(normalizedMessage) &&
+    normalizedMessage.split(/\s+/).length <= 6;
 
   return (
     englishTopicPattern.test(normalizedMessage) ||
     vietnameseEnglishTopicPattern.test(normalizedMessage) ||
+    looksLikeEnglishSentence ||
     looksLikeShortVocabularyItem
   );
 }
@@ -101,17 +134,6 @@ function normalizeHistory(history: unknown): EnglishChatMessage[] {
     }));
 }
 
-function getPollinationsBaseUrl(): string {
-  return (process.env.AI_HINT_API_URL || DEFAULT_AI_HINT_API_URL)
-    .replace(/\/+$/, "")
-    .replace(/\/openai$/i, "");
-}
-
-function getPollinationsOpenAiUrl(): string {
-  const baseUrl = getPollinationsBaseUrl();
-  return `${baseUrl}/openai`;
-}
-
 function getTimeoutMs(): number {
   const timeout = Number(process.env.AI_HINT_TIMEOUT_MS);
   return Number.isFinite(timeout) && timeout > 0
@@ -119,9 +141,19 @@ function getTimeoutMs(): number {
     : DEFAULT_TIMEOUT_MS;
 }
 
+function getAiProvider() {
+  return (process.env.AI_PROVIDER || "pollinations").trim().toLowerCase();
+}
+
+function isLocalProvider() {
+  return ["local", "custom", "llama", "gguf"].includes(getAiProvider());
+}
+
 function getAnswer(data: ChatCompletionResponse): string {
   return (
     data?.choices?.[0]?.message?.content?.trim() ||
+    data?.choices?.[0]?.text?.trim() ||
+    data?.answer?.trim() ||
     data?.text?.trim() ||
     data?.content?.trim() ||
     ""
@@ -137,31 +169,64 @@ async function parseCompletionResponse(response: Response): Promise<ChatCompleti
   return { text: (await response.text()).trim() };
 }
 
-async function requestOpenAiCompatibleCompletion(
-  messages: EnglishChatMessage[],
-  maxTokens: number,
-  temperature: number
+function getPollinationsBaseUrl(): string {
+  return (process.env.AI_HINT_API_URL || DEFAULT_AI_HINT_API_URL)
+    .replace(/\/+$/, "")
+    .replace(/\/openai$/i, "");
+}
+
+function getPollinationsOpenAiUrl(): string {
+  return `${getPollinationsBaseUrl()}/openai`;
+}
+
+function getLocalChatUrl(): string {
+  const configuredUrl =
+    process.env.AI_FINE_TUNED_API_URL ||
+    process.env.LOCAL_LLM_API_URL ||
+    "http://localhost:8080/v1/chat/completions";
+  const trimmedUrl = configuredUrl.replace(/\/+$/, "");
+
+  if (trimmedUrl.endsWith("/v1/chat/completions") || trimmedUrl.endsWith("/chat")) {
+    return trimmedUrl;
+  }
+
+  return `${trimmedUrl}/v1/chat/completions`;
+}
+
+function buildHeaders() {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const apiKey = process.env.AI_FINE_TUNED_API_KEY || process.env.LOCAL_LLM_API_KEY;
+
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
+  return headers;
+}
+
+async function postChatCompletion(
+  url: string,
+  body: Record<string, unknown>
 ): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), getTimeoutMs());
 
   try {
-    const response = await fetch(getPollinationsOpenAiUrl(), {
+    const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.AI_HINT_MODEL || DEFAULT_MODEL,
-        temperature,
-        max_tokens: maxTokens,
-        messages,
-      }),
+      headers: buildHeaders(),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
 
     if (!response.ok) {
-      throw new AppError("Không thể gọi API chatbot lúc này.", 502);
+      const errorText = await response.text().catch(() => "");
+      throw new AppError(
+        errorText || "Không thể gọi API chatbot lúc này.",
+        response.status >= 400 && response.status < 500 ? 400 : 502
+      );
     }
 
     const answer = getAnswer(await parseCompletionResponse(response));
@@ -200,11 +265,10 @@ async function requestTextCompletionFallback(
   const url = new URL(
     `${getPollinationsBaseUrl()}/${encodeURIComponent(buildPlainPrompt(messages))}`
   );
-  url.searchParams.set("model", process.env.AI_HINT_MODEL || DEFAULT_MODEL);
+  url.searchParams.set("model", process.env.AI_HINT_MODEL || DEFAULT_POLLINATIONS_MODEL);
 
   try {
     const response = await fetch(url, { signal: controller.signal });
-
     if (!response.ok) {
       throw new AppError("Không thể gọi API chatbot lúc này.", 502);
     }
@@ -223,19 +287,49 @@ async function requestTextCompletionFallback(
   }
 }
 
-async function requestChatCompletion(
+async function requestPollinationsCompletion(
   messages: EnglishChatMessage[],
-  maxTokens = 280,
-  temperature = 0.3
+  maxTokens: number,
+  temperature: number
 ): Promise<string> {
   try {
-    return await requestOpenAiCompatibleCompletion(messages, maxTokens, temperature);
+    return await postChatCompletion(getPollinationsOpenAiUrl(), {
+      model: process.env.AI_HINT_MODEL || DEFAULT_POLLINATIONS_MODEL,
+      temperature,
+      max_tokens: maxTokens,
+      messages,
+    });
   } catch (error) {
     if (error instanceof AppError && error.statusCode >= 500) {
       return requestTextCompletionFallback(messages);
     }
     throw error;
   }
+}
+
+async function requestLocalCompletion(
+  messages: EnglishChatMessage[],
+  maxTokens: number,
+  temperature: number
+): Promise<string> {
+  return postChatCompletion(getLocalChatUrl(), {
+    model: process.env.AI_FINE_TUNED_MODEL || DEFAULT_LOCAL_MODEL,
+    temperature,
+    max_tokens: maxTokens,
+    messages,
+  });
+}
+
+async function requestChatCompletion(
+  messages: EnglishChatMessage[],
+  maxTokens = 512,
+  temperature = 0.3
+): Promise<string> {
+  if (isLocalProvider()) {
+    return requestLocalCompletion(messages, maxTokens, temperature);
+  }
+
+  return requestPollinationsCompletion(messages, maxTokens, temperature);
 }
 
 export async function generateAnswerExplanation(
@@ -254,15 +348,13 @@ export async function generateAnswerExplanation(
   return requestChatCompletion(
     [
       {
+        role: "system",
+        content: ENGLISH_TEACHER_SYSTEM_PROMPT,
+      },
+      {
         role: "user",
         content: [
-          "Bạn là API giải thích đáp án cho ứng dụng học tiếng Anh.",
-          "Chỉ dùng dữ liệu câu hỏi, đáp án và ghi chú database được cung cấp. Không tự đổi đáp án đúng.",
-          "Trả lời bằng tiếng Việt, ngắn gọn, đúng trọng tâm, theo đúng cấu trúc:",
-          "Cấu trúc ngữ pháp: ...",
-          `Lý do chọn đáp án ${input.correctOption.label}: ...`,
-          "Vì sao đáp án đã chọn sai/đúng: ...",
-          "",
+          "Giải thích đáp án dựa trên dữ liệu sau. Không tự đổi đáp án đúng.",
           `Loại câu hỏi: ${input.category ?? "unknown"}`,
           `Câu hỏi: ${input.questionContent ?? ""}`,
           input.transcript ? `Transcript: ${input.transcript}` : "",
@@ -270,12 +362,12 @@ export async function generateAnswerExplanation(
           `Người học chọn: ${input.selectedOption.label}. ${input.selectedOption.content}`,
           `Đáp án đúng từ database: ${input.correctOption.label}. ${input.correctOption.content}`,
           input.existingExplanation
-            ? `Giải thích/ghi chú sẵn trong database: ${input.existingExplanation}`
-            : "Giải thích/ghi chú sẵn trong database: không có",
+            ? `Ghi chú sẵn trong database: ${input.existingExplanation}`
+            : "Ghi chú sẵn trong database: không có",
         ].filter(Boolean).join("\n"),
       },
     ],
-    360,
+    700,
     0.2
   );
 }
@@ -298,18 +390,12 @@ export async function askEnglishChat(
     return TOPIC_WARNING;
   }
 
-  try {
-    return requestChatCompletion([
-      {
-        role: "system",
-        content:
-          "Bạn là trợ lý học tiếng Anh cho website TT English. Chỉ trả lời câu hỏi liên quan đến ngữ pháp tiếng Anh, từ vựng, nghĩa từ, cách dùng, ví dụ câu, phát âm, collocation, phrasal verbs, TOEIC/IELTS English. Nếu người dùng hỏi chủ đề khác, từ chối lịch sự bằng tiếng Việt trong 1 câu. Câu trả lời phải ngắn gọn, dễ đọc, format markdown tối giản: dùng tiêu đề đậm, bullet ngắn, ví dụ tiếng Anh rõ ràng. Không trả lời lan man.",
-      },
-      ...normalizeHistory(history),
-      { role: "user", content: cleanMessage },
-    ]);
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    throw new AppError("Chatbot đang bận, vui lòng thử lại sau.", 502);
-  }
+  return requestChatCompletion([
+    {
+      role: "system",
+      content: ENGLISH_TEACHER_SYSTEM_PROMPT,
+    },
+    ...normalizeHistory(history),
+    { role: "user", content: cleanMessage },
+  ]);
 }
