@@ -15,9 +15,8 @@ import rateLimit from 'express-rate-limit';
 import globalErrorHandler from './controller/errorController';
 import authRouter from "./router/authRouter";
 import blogRouter from "./router/blogRouter";
-import commentRouter from './router/commenRouter';
+import commentRouter from "./router/commentRouter";
 import courseRouter from "./router/courseRouter";
-import englishChatRouter from "./router/englishChatRouter";
 import forumRouter from "./router/forumRouter";
 import lectureRouter from "./router/LectureRouter";
 import lessonRouter from "./router/LessonRouter";
@@ -58,7 +57,7 @@ AppDataSource.initialize()
     const limiter = rateLimit({
       max: 1000,
       windowMs: 60 * 60 * 1000,
-      message: 'To many request from this IP, please try again'
+      message: 'Too many requests from this IP, please try again'
     });
 
     // Serve uploaded files from a stable project-level public directory.
@@ -86,7 +85,6 @@ AppDataSource.initialize()
     app.use("/api/v1", lessonRouter);
     app.use("/api/v1", lectureRouter);
     app.use("/api/v1", commentRouter);
-    app.use("/api/v1", englishChatRouter);
     app.use("/api/v1/toeic-collections", toeicCollectionRouter);
     app.use("/api/v1", toeicExamSetRouter);
     app.use("/api/v1", toeicExamPartRouter);

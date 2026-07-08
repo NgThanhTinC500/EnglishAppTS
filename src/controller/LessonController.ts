@@ -33,7 +33,6 @@ export class LessonController {
     });
 
     getLessonDetail = catchAsync(async (req: Request, res: Response) => {
-        // const courseId = Number(req.params.courseId);
         const lessonId = Number(req.params.lessonId);
         const lesson = await this.lessonService.getLessonById(lessonId);
 

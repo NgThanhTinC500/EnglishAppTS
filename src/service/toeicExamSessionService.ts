@@ -35,9 +35,6 @@ export class ToeicExamSessionService {
         this.optionRepository = AppDataSource.getRepository(ToeicQuestionOption);
     }
 
-    // giả sử bây giờ là 10h sáng, đề toeic 2 tiếng, 
-    // vậy những đề toeic nào đã bắt đầu trước 8h sáng mà vẫn đang in_progress thì sẽ bị expire
-    // quét trong hệ thống để tìm
     async expireOverdueSessions(now = new Date()) {
         const expiresBefore = new Date(now.getTime() - TOEIC_DURATION_SECONDS * 1000);
         const overdueSessions = await this.sessionRepository.find({
@@ -48,7 +45,6 @@ export class ToeicExamSessionService {
         });
 
         for (const session of overdueSessions) {
-            // tự động nộp bài khi hết thòi gian
             await this.autoSubmitExpiredSession(session);
         }
         return overdueSessions.length;
@@ -61,8 +57,6 @@ export class ToeicExamSessionService {
     }
 
     private getElapsedSeconds(session: ToeicExamSession) {
-        // nếu ko có session thhif mặc định là 0, 
-        // nếu có thì tính thời gian đã trôi qua kể từ khi bắt đầu session
         if (!session.startedAt) return 0;
         return Math.max(0, Math.floor((Date.now() - session.startedAt.getTime()) / 1000));
     }
@@ -75,11 +69,7 @@ export class ToeicExamSessionService {
         return Math.max(TOEIC_DURATION_SECONDS - this.getElapsedSeconds(session), 0);
     }
 
-    // Tự động nộp bài khi hết thòi gian -
-    //  kiểm tra xem session đã hết thời gian chưa, nếu hết thì nộp bài và trả về session đã nộp
-    // xử lí session khi user đang tương tác
     private async applyTimer(session: ToeicExamSession) {
-        // bài 
         if (session.status !== ToeicSessionStatus.IN_PROGRESS) return session;
         const remainingSeconds = this.getRemainingSeconds(session);
         session.remainingSeconds = remainingSeconds;
@@ -91,7 +81,6 @@ export class ToeicExamSessionService {
         return this.sessionRepository.save(session);
     }
 
-    // tìm session cho user
     private async getSessionForUser(sessionId: number, userId: string) {
         this.ensurePositiveInteger(sessionId, "sessionId");
 
@@ -104,11 +93,8 @@ export class ToeicExamSessionService {
         return session;
     }
 
-    // dựa vào examSetId để lấy toàn bộ thông tin của bộ đề,
     private async getFullExamSetEntity(examSetId: number, requirePublished = true) {
         this.ensurePositiveInteger(examSetId, "examSetId");
-        // dựa vào examSetId để lấy toàn bộ thông tin của bộ đề, 
-        // bao gồm các phần, nhóm câu hỏi, câu hỏi và đáp án
         const examSet = await this.examSetRepository.findOne({
             where: requirePublished ? { id: examSetId, isPublished: true } : { id: examSetId },
             relations: {
@@ -185,7 +171,6 @@ export class ToeicExamSessionService {
         };
     }
 
-    // Lấy danh sách câu trả lời của một phiên thi TOEIC
     private async getSessionAnswers(sessionId: number) {
         return this.sessionAnswerRepository.find({
             where: { sessionId },
@@ -290,12 +275,10 @@ export class ToeicExamSessionService {
         await this.sessionRepository.save(session);
     }
 
-    // CHẤM BÀI THI TOEIC
     private async buildSubmittedPayload(session: ToeicExamSession, examSet: ToeicExamSet) {
         const questionById = this.getQuestionsById(examSet.parts ?? []);
         const allQuestionIds = [...questionById.keys()];
         const savedAnswers = allQuestionIds.length
-            // nếu có câu hỏi thì lấy danh sách câu trả lời đã lưu trong session
             ? await this.sessionAnswerRepository.find({
                 where: {
                     sessionId: session.id,
@@ -307,7 +290,6 @@ export class ToeicExamSessionService {
 
         let listeningCorrectCount = 0;
         let readingCorrectCount = 0;
-        // DUYỆT QUA TỪNG ĐÁP ÁN
         savedAnswers.forEach((answer) => {
             if (!answer.isCorrect) return;
 
@@ -521,7 +503,6 @@ export class ToeicExamSessionService {
         };
     }
 
-    // vào sessionRepository tìm tất cả các session của userId, sắp xếp theo createdAt giảm dần
     async getHistory(userId: string) {
         const sessions = await this.sessionRepository.find({
             where: { userId },

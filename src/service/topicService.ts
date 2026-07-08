@@ -1,4 +1,5 @@
 import { Repository } from "typeorm";
+
 import { AppDataSource } from "../data-source";
 import { Exam } from "../entity/Exam";
 import { Topic, TopicType } from "../entity/Topic";
@@ -27,7 +28,7 @@ export class TopicService {
 
     private async getExamCountByTopic(topicId: number) {
         return this.examRepository.count({
-            where: { topicId }
+            where: { topicId },
         });
     }
 
@@ -35,13 +36,14 @@ export class TopicService {
         if (!topicData.title?.trim()) {
             throw new AppError("Bắt buộc có tiêu đề", 400);
         }
+
         const { title, description, type } = topicData;
         this.validateTopicType(type);
 
         const topic = this.topicRepository.create({
             title: title.trim(),
             description,
-            type: type ?? TopicType.GRAMMAR
+            type: type ?? TopicType.GRAMMAR,
         });
 
         return this.topicRepository.save(topic);
@@ -51,7 +53,7 @@ export class TopicService {
         this.ensurePositiveInteger(topicId, "topicId");
 
         const topic = await this.topicRepository.findOne({
-            where: { id: topicId }
+            where: { id: topicId },
         });
         if (!topic) throw new AppError("Không tìm thấy topic", 404);
 
@@ -78,22 +80,18 @@ export class TopicService {
 
     async deleteTopic(topicId: number) {
         this.ensurePositiveInteger(topicId, "topicId");
+
         const topic = await this.topicRepository.findOne({
-            where: { id: topicId }
+            where: { id: topicId },
         });
         if (!topic) throw new AppError("Không tìm thấy topic", 404);
-
-        // const examCount = await this.getExamCountByTopic(topicId);
-        // if (examCount > 0) {
-        //     throw new AppError("Không thể xóa topic sau khi đã tạo đề thi", 400);
-        // }
 
         await this.topicRepository.delete(topicId);
     }
 
-    // Get all topics with total questions count, filter by type if provided.
     async getAllTopic(type?: TopicType) {
         this.validateTopicType(type);
+
         return this.topicRepository.query(`
             SELECT
                 t.id,

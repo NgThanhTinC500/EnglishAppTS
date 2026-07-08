@@ -25,13 +25,6 @@ export class ExamService {
             .filter(Boolean);
     }
 
-    /*
-    ẩn đáp án dictation trong transcript bằng cách thay đáp án đúng thành [BLANK].
-        transcript = "The boy is drinking coffee"
-        correctAnswers = ["boy", "drinking", "coffee"]
-        return
-        The [BLANK] is [BLANK] [BLANK]
-    */
     private maskTranscript(transcript: string | null, correctAnswers: string[]) {
         if (!transcript) return transcript;
         if (transcript.includes("[BLANK]")) return transcript;
@@ -67,10 +60,10 @@ export class ExamService {
                 questionId: option.questionId,
                 label: option.label,
                 content: option.content,
-                isCorrect: option.isCorrect
+                isCorrect: option.isCorrect,
             })) ?? [],
             createdAt: question.createdAt,
-            updatedAt: question.updatedAt
+            updatedAt: question.updatedAt,
         };
     }
 
@@ -81,13 +74,13 @@ export class ExamService {
         if (!title) throw new AppError("Bắt buộc có tiêu đề đề thi", 400);
 
         const topic = await this.topicRepository.findOne({
-            where: { id: topicId }
+            where: { id: topicId },
         });
         if (!topic) throw new AppError("Không tìm thấy đề tài", 404);
 
         const exam = this.examRepository.create({
             title,
-            topicId
+            topicId,
         });
 
         return this.examRepository.save(exam);
@@ -98,7 +91,7 @@ export class ExamService {
 
         return this.examRepository.find({
             where: { topicId, isActive: true },
-            order: { id: "ASC" }
+            order: { id: "ASC" },
         });
     }
 
@@ -111,10 +104,10 @@ export class ExamService {
             relations: {
                 examQuestions: {
                     question: {
-                        options: true
-                    }
-                }
-            }
+                        options: true,
+                    },
+                },
+            },
         });
 
         if (!exam) throw new AppError("Không tìm thấy đề thi", 404);
@@ -128,8 +121,8 @@ export class ExamService {
                 .sort((first, second) => first.orderIndex - second.orderIndex)
                 .map((examQuestion) => ({
                     orderIndex: examQuestion.orderIndex,
-                    ...this.toAdminQuestion(examQuestion.question)
-                }))
+                    ...this.toAdminQuestion(examQuestion.question),
+                })),
         };
     }
 
@@ -138,7 +131,7 @@ export class ExamService {
         this.ensurePositiveInteger(examId, "examId");
 
         const exam = await this.examRepository.findOne({
-            where: { topicId, id: examId }
+            where: { topicId, id: examId },
         });
         if (!exam) throw new AppError("Không tìm thấy đề thi", 404);
 
@@ -156,15 +149,12 @@ export class ExamService {
         this.ensurePositiveInteger(examId, "examId");
 
         const exam = await this.examRepository.findOne({
-            where: { topicId, id: examId }
+            where: { topicId, id: examId },
         });
 
         if (!exam) throw new AppError("Không tìm thấy đề thi", 404);
 
-        const allowedFields: (keyof Exam)[] = [
-            "title",
-            "isActive"
-        ];
+        const allowedFields: (keyof Exam)[] = ["title", "isActive"];
 
         const filteredData = Object.fromEntries(
             Object.entries(updateData).filter(

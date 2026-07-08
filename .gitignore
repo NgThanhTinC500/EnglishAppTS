@@ -2,6 +2,8 @@
 .vscode/
 .env
 .env/
+*.log
+stdout
 node_modules/
 build/
 tmp/

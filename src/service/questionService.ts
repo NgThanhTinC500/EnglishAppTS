@@ -21,7 +21,6 @@ export class QuestionService {
         return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
-    // convert "A,B,C" => ["A", "B", "C"]
     private splitDictationAnswers(value: string | null | undefined) {
         return (value ?? "")
             .split(",")
@@ -29,7 +28,6 @@ export class QuestionService {
             .filter(Boolean);
     }
 
-    // Normalize dictation answers before comparing them.
     private normalizeDictationAnswer(value: string) {
         return value
             .trim()
@@ -39,10 +37,6 @@ export class QuestionService {
             .replace(/\s+/g, " ");
     }
 
-    // mask transcript by replacing correct answers with [BLANK]
-    // transcript:     "The quick brown fox"
-    // correctAnswers: ["quick", "brown"]
-    // result:         "The [BLANK] [BLANK] fox"
     private maskTranscript(transcript: string | null, correctAnswers: string[]) {
         if (!transcript) return transcript;
         if (transcript.includes("[BLANK]")) return transcript;
@@ -88,7 +82,6 @@ export class QuestionService {
         }
     }
 
-    // đảm bảo type câu hỏi trùng với type topic
     private ensureCategoryMatchesTopic(
         topicType: string | null | undefined,
         questionCategory: QuestionCategory
@@ -151,19 +144,15 @@ export class QuestionService {
         content: string;
         isCorrect: boolean;
     }[]) {
-        // kiểm tra xem phải mảng ko, vầ có ít nhất 2 tùy chọn
         if (!Array.isArray(options) || options.length < 2) {
             throw new AppError("Ít nhất 2 tùy chọn được yêu cầu", 400);
         }
-        // kiêm tra xem tất cả các tùy chọn có nhãn và nội dung hợp lệ không
-        // some, kiểm tra có ít nhất 1 phần tử thỏa điều kiện
         const hasInvalidOption = options.some(
             (option) => !option.label?.trim() || !option.content?.trim()
         );
         if (hasInvalidOption) {
             throw new AppError("Thẻ tùy chọn và nội dung là bắt buộc", 400);
         }
-        // tìm số lượng đáp án đúng, chỉ có 1 đáp án đúng được phép
         const correctCount = options.filter((option) => option.isCorrect).length;
         if (correctCount !== 1) {
             throw new AppError("Phải có đúng 1 đáp án đúng", 400);
@@ -171,9 +160,6 @@ export class QuestionService {
     }
 
 
-    // convert Question entity to a safe object for API response 
-    // by removing correct answer and other sensitive info
-    // safe response for single choice question:
     private toSafeQuestion(question: Question | null) {
         if (!question) return question;
 
@@ -249,7 +235,6 @@ export class QuestionService {
                 );
             }
 
-            // ===== VALIDATE =====
             if (questionType === QuestionType.SINGLE_CHOICE) {
                 if (!data.content || data.content.trim() === "") {
                     throw new AppError("Phải có nội dung câu hỏi", 400);
@@ -268,7 +253,6 @@ export class QuestionService {
                 }
             }
 
-            // ===== CREATE QUESTION =====
             const question = questionRepo.create({
                 type: questionType,
                 category: questionCategory,
@@ -285,7 +269,6 @@ export class QuestionService {
 
             const savedQuestion = await questionRepo.save(question);
 
-            // ===== CREATE OPTIONS =====
             if (questionType === QuestionType.SINGLE_CHOICE && normalizedOptions.length > 0) {
                 const options = normalizedOptions.map(opt =>
                     optionRepo.create({
@@ -298,7 +281,6 @@ export class QuestionService {
                 await optionRepo.save(options);
             }
 
-            // ===== ADD TO EXAM (optional) =====
             if (targetExamId !== null) {
                 const last = await examQuestionRepo.findOne({
                     where: { examId: targetExamId },

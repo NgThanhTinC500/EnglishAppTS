@@ -13,7 +13,6 @@ const vocabularyRouter = Router();
 const vocabularyController = new VocabularyController();
 const authController = new AuthController();
 
-// Vocabulary sets
 vocabularyRouter.post(
   "/vocabsets",
   authController.protect,
@@ -45,7 +44,6 @@ vocabularyRouter.delete(
   vocabularyController.deleteVocabularySet
 );
 
-// Vocabularies in a set
 vocabularyRouter.get(
   "/vocabsets/:setId/vocabs",
   authController.protect,
@@ -78,14 +76,12 @@ vocabularyRouter.delete(
   vocabularyController.deleteVocabulary
 );
 
-// Vocabulary practice
 vocabularyRouter.get(
   "/vocabulary/lookup",
   authController.protect,
   authController.restrictTo("admin"),
   vocabularyController.lookupVocabulary
 );
-// get vocabulary practice items by vocabulary set id
 vocabularyRouter.get(
   "/vocabsets/:setId/practice",
   authController.protect,

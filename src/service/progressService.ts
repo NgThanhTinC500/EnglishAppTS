@@ -64,17 +64,11 @@ type ListeningProgressRow = {
 };
 
 export class ProgressService {
-    // ============================================================
-    // Common helpers
-    // ============================================================
-
-    // Chuan hoa so ngay tu client: mac dinh 7 ngay, chi cho phep 1-90 ngay.
     private clampDays(days?: number) {
         if (!Number.isFinite(days)) return 7;
         return Math.min(Math.max(Math.trunc(days as number), 1), 90);
     }
 
-    // Tao khoang thoi gian thong ke: tu hien tai lui ve n ngay truoc.
     private buildPeriod(days?: number): ProgressPeriod {
         const periodDays = this.clampDays(days);
         const to = new Date();
@@ -86,28 +80,17 @@ export class ProgressService {
     private toNumber(value: unknown) {
         return Number(value ?? 0);
     }
-    // tính độ chính xác (accuracy) dựa trên số câu trả lời đúng và tổng số câu trả lời. Nếu không có câu trả lời, độ chính xác là 0.
+
     private getAccuracy(correctCount: number, answeredCount: number) {
         if (!answeredCount) return 0;
         return Math.round((correctCount / answeredCount) * 100);
     }
 
-    // Mot so man thong ke cho phep khong truyen days, khi do se lay tong toan bo.
     private buildOptionalPeriod(days?: number) {
         if (!days || days <= 0) return null;
         return this.buildPeriod(days);
     }
 
-    // ============================================================
-    // Grammar progress
-    // Flow:
-    // 1. Lay tong cau da lam/dung/sai trong khoang ngay.
-    // 2. Gom ket qua theo tung topic grammar.
-    // 3. Lay 5 bai lam gan nhat va 3 topic yeu nhat de goi y on tap.
-    // ============================================================
-
-    // Tong hop tat ca cau grammar user da tra loi trong khoang thoi gian.
-    // thống kê theo thời gian
     private async getAnswerSummary(userId: string, period: ProgressPeriod) {
         const rows = await AppDataSource.query(
             `
@@ -145,7 +128,6 @@ export class ProgressService {
                 QuestionType.SINGLE_CHOICE,
             ],
         );
-        // luôn trả về mảng dù chỉ 1 dòng. nên lấy phần tử đầu tiên
         const row = rows[0] as ProgressSummaryRow | undefined;
 
         return {
@@ -155,8 +137,6 @@ export class ProgressService {
         };
     }
 
-    // Gom tien do theo topic: moi topic co so cau da lam, cau dung, cau sai, ti le dung.
-    // thống kê theo chủ đề
     private async getTopicProgress(userId: string, period: ProgressPeriod) {
         const rows = await AppDataSource.query(
             `
@@ -219,8 +199,6 @@ export class ProgressService {
         });
     }
 
-    // Lay cac bai grammar user nop gan nhat de hien thi lich su lam bai.
-    // lấy 5 bài grammar gần đây nhất mà user đã làm để hiển thị lịch sử làm bài.
     private async getRecentAttempts(userId: string, period: ProgressPeriod) {
         const rows = await AppDataSource.query(
             `
@@ -273,7 +251,6 @@ export class ProgressService {
     async getGrammarProgress(userId: string, days?: number) {
         const period = this.buildPeriod(days);
 
-        // Chay song song 3 query doc lap de trang progress tai nhanh hon.
         const [
             currentSummary,
             byTopic,
@@ -289,12 +266,10 @@ export class ProgressService {
             currentSummary.answeredCount,
         );
 
-        // Chi dem nhung topic user that su da lam cau hoi.
         const practicedTopicCount = byTopic.filter(
             (topic) => topic.answeredCount > 0,
         ).length;
 
-        // Topic yeu = topic da lam nhung ti le dung thap nhat.
         const weakTopics = [...byTopic]
             .filter((topic) => topic.answeredCount > 0)
             .sort((first, second) => first.accuracyPercent - second.accuracyPercent)
@@ -317,17 +292,7 @@ export class ProgressService {
         };
     }
 
-    // ============================================================
-    // Listening progress
-    // Flow:
-    // 1. Dem tong lesson listening dang active.
-    // 2. Dem lesson user da hoc qua attempt_answers.
-    // 3. Tach ti le dung theo 2 dang: listening check va dictation.
-    // ============================================================
-
     async getListeningProgress(userId: string) {
-        // CTE available_questions lay danh sach cau listening co the hoc.
-        // CTE user_answers lay cau user da tra loi de tinh completion va accuracy.
         const rows = await AppDataSource.query(
             `
             WITH available_questions AS (
@@ -419,15 +384,6 @@ export class ProgressService {
         };
     }
 
-    // ============================================================
-    // Vocabulary progress
-    // Flow:
-    // 1. Overview: tong tu, da hoc, da master, can review.
-    // 2. Today: ket qua luyen spelling trong ngay hien tai theo gio Viet Nam.
-    // 3. Latest session: phien luyen tap gan nhat de FE co the resume.
-    // ============================================================
-
-    // Lay moc dau/cuoi ngay theo gio Viet Nam de thong ke "hom nay" cho vocabulary.
     private getVietnamDayRange(date = new Date()) {
         const formatter = new Intl.DateTimeFormat("en-CA", {
             timeZone: "Asia/Ho_Chi_Minh",
@@ -443,7 +399,6 @@ export class ProgressService {
         return { todayKey, from, to };
     }
 
-    // Format Date thanh yyyy-mm-dd theo gio Viet Nam.
     private getDateKey(value: Date) {
         return new Intl.DateTimeFormat("en-CA", {
             timeZone: "Asia/Ho_Chi_Minh",
@@ -453,7 +408,6 @@ export class ProgressService {
         }).format(value);
     }
 
-    // Tong quan vocabulary: dem tien do cua user tren cac bo tu do admin tao.
     private async getVocabularyOverview(userId: string, period: ProgressPeriod | null) {
         const periodFilter = period
             ? `AND uvp."lastPracticedAt" >= $2 AND uvp."lastPracticedAt" < $3`
@@ -499,7 +453,6 @@ export class ProgressService {
         };
     }
 
-    // Thong ke rieng ket qua luyen spelling trong ngay hien tai.
     private async getVocabularyToday(userId: string) {
         const today = this.getVietnamDayRange();
         const rows = await AppDataSource.query(
@@ -544,7 +497,6 @@ export class ProgressService {
     async getVocabularyProgress(userId: string, days?: number) {
         const period = this.buildOptionalPeriod(days);
 
-        // 3 phan doc lap nen chay song song: overview, today, latestSession.
         const [overview, today, latestSession] = await Promise.all([
             this.getVocabularyOverview(userId, period),
             this.getVocabularyToday(userId),

@@ -34,7 +34,7 @@ export class CommentController {
         if (!content) {
             return res.status(400).json({
                 success: false,
-                message: "Nội dung comment không được để trống",
+                message: "Nội dung bình luận không được để trống",
             });
         }
 
@@ -61,21 +61,22 @@ export class CommentController {
         });
     });
 
-
     getCommentsByLectureId = catchAsync(async (req: Request, res: Response) => {
         const lectureId = Number(req.params.lectureId);
+
         if (Number.isNaN(lectureId)) {
             return res.status(400).json({
                 success: false,
                 message: "lectureId không hợp lệ",
             });
         }
+
         const comments = await this.commentService.getCommentsByLectureId(lectureId, req.user?.id);
         res.status(200).json({
             success: true,
             data: comments,
         });
-    })
+    });
 
     updateComment = catchAsync(async (req: Request, res: Response) => {
         const commentId = Number(req.params.commentId);
@@ -85,28 +86,28 @@ export class CommentController {
         if (!userId) {
             return res.status(401).json({
                 success: false,
-                message: "Ban chua dang nhap",
+                message: "Bạn chưa đăng nhập",
             });
         }
 
         if (!Number.isInteger(commentId) || commentId <= 0) {
             return res.status(400).json({
                 success: false,
-                message: "commentId khong hop le",
+                message: "commentId không hợp lệ",
             });
         }
 
         if (!content) {
             return res.status(400).json({
                 success: false,
-                message: "Noi dung binh luan khong duoc de trong",
+                message: "Nội dung bình luận không được để trống",
             });
         }
 
         if (content.length > 255) {
             return res.status(400).json({
                 success: false,
-                message: "Noi dung binh luan khong duoc vuot qua 255 ky tu",
+                message: "Nội dung bình luận không được vượt quá 255 ký tự",
             });
         }
 
@@ -120,7 +121,7 @@ export class CommentController {
             success: true,
             data: comment,
         });
-    })
+    });
 
     deleteComment = catchAsync(async (req: Request, res: Response) => {
         const commentId = Number(req.params.commentId);
@@ -129,14 +130,14 @@ export class CommentController {
         if (!userId) {
             return res.status(401).json({
                 success: false,
-                message: "Ban chua dang nhap",
+                message: "Bạn chưa đăng nhập",
             });
         }
 
         if (!Number.isInteger(commentId) || commentId <= 0) {
             return res.status(400).json({
                 success: false,
-                message: "commentId khong hop le",
+                message: "commentId không hợp lệ",
             });
         }
 
@@ -149,7 +150,7 @@ export class CommentController {
             success: true,
             data: deletedComment,
         });
-    })
+    });
 
     toggleLike = catchAsync(async (req: Request, res: Response) => {
         const commentId = Number(req.params.commentId);
@@ -158,14 +159,14 @@ export class CommentController {
         if (!userId) {
             return res.status(401).json({
                 success: false,
-                message: "Ban chua dang nhap",
+                message: "Bạn chưa đăng nhập",
             });
         }
 
         if (Number.isNaN(commentId)) {
             return res.status(400).json({
                 success: false,
-                message: "commentId khong hop le",
+                message: "commentId không hợp lệ",
             });
         }
 
@@ -174,5 +175,5 @@ export class CommentController {
             success: true,
             data: comment,
         });
-    })
+    });
 }

@@ -12,9 +12,6 @@ export class VocabularyController {
 
     private vocabularyPracticeService = new VocabularyPracticeService();
 
-    // validate route param and return string value4
-    // "12" => yes
-    // ["12", "13"] => no
     private getRouteParam(
         value: string | string[] | undefined,
         fieldName: string
@@ -31,7 +28,6 @@ export class VocabularyController {
     ) {
         const normalizedValue = this.getRouteParam(value, fieldName);
         const id = Number(normalizedValue);
-        // convert string to number and check if it is a valid positive integer
         if (!Number.isInteger(id) || id <= 0) {
             throw new AppError(` ${fieldName} không hợp lệ`, 400);
         }
@@ -45,12 +41,6 @@ export class VocabularyController {
         }
         return req.user.id;
     }
-
-    /*
-        ======================
-        VOCABULARY SET
-        ======================
-    */
 
     createVocabularySet = catchAsync(
         async (req: Request, res: Response) => {
@@ -126,12 +116,6 @@ export class VocabularyController {
             });
         }
     );
-
-    /*
-        ======================
-        VOCABULARY
-        ======================
-    */
 
     lookupVocabulary = catchAsync(
         async (req: Request, res: Response) => {

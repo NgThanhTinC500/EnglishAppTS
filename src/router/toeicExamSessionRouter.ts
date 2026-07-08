@@ -1,12 +1,11 @@
 import { Router } from "express";
+
 import { AuthController } from "../controller/authController";
 import { ToeicExamSessionController } from "../controller/toeicExamSessionController";
 
 const toeicExamSessionRouter = Router();
 const authController = new AuthController();
 const toeicExamSessionController = new ToeicExamSessionController();
-
-
 
 toeicExamSessionRouter.post(
     "/toeic/exam-sets/:examSetId/start",

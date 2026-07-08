@@ -1,5 +1,6 @@
 import * as jwt from "jsonwebtoken";
 import type { SignOptions } from "jsonwebtoken";
+import { Request } from "express";
 import { MoreThan } from "typeorm";
 import { User } from "../entity/User";
 import { UserService } from "./userService";
@@ -7,7 +8,6 @@ import { PasswordService } from "./passwordService";
 import sendEmail from "../utils/email";
 import { AppError } from "../utils/appError";
 import { JwtPayload } from "../interface/jwtPayload.interface";
-import { Request } from "express";
 
 export class AuthService {
     private readonly passwordService = new PasswordService();
@@ -22,13 +22,7 @@ export class AuthService {
             throw new AppError("JWT secret is not configured", 500);
         }
 
-        return jwt.sign(
-            { id: userId },
-            jwtSecret,
-            {
-                expiresIn: jwtExpiresIn,
-            }
-        );
+        return jwt.sign({ id: userId }, jwtSecret, { expiresIn: jwtExpiresIn });
     }
 
     async signup(data: {
@@ -56,10 +50,10 @@ export class AuthService {
         if (!email || !password) {
             throw new AppError("Vui lòng cung cấp email và mật khẩu", 400);
         }
+
         const user = await this.userService.findByEmail(email);
 
         if (!user || !user.isActive) {
-            // 401 unauthorized
             throw new AppError("Email hoặc mật khẩu không đúng", 401);
         }
 
@@ -100,7 +94,6 @@ export class AuthService {
         let decoded: JwtPayload;
 
         try {
-            // verify token and get payload
             decoded = jwt.verify(token, jwtSecret) as JwtPayload;
         } catch {
             throw new AppError("Vui lòng đăng nhập để truy cập", 401);
@@ -112,7 +105,6 @@ export class AuthService {
             throw new AppError("The user belonging to this token does not exist", 401);
         }
 
-        // compare  password change time && token issue time
         if (
             this.passwordService.changedPasswordAfter(
                 currentUser.passwordChangedAt,
@@ -165,10 +157,7 @@ export class AuthService {
         return updatedUser;
     }
 
-    async forgotPassword(
-        email: string,
-        clientUrl: string
-    ): Promise<void> {
+    async forgotPassword(email: string, clientUrl: string): Promise<void> {
         const user = await this.userService.findByEmail(email);
 
         if (!user) return;
@@ -188,7 +177,7 @@ export class AuthService {
             await sendEmail({
                 email: user.email,
                 subject: "Đặt lại mật khẩu TT English",
-                message: `Bạn vừa yêu cầu đặt lại mật khẩu TT English.\n\nVui lòng bấm vào liên kết sau để tạo mật khẩu mới. Liên kết có hiệu lực trong 10 phút:\n${resetURL}\n\n nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.`,
+                message: `Bạn vừa yêu cầu đặt lại mật khẩu TT English.\n\nVui lòng bấm vào liên kết sau để tạo mật khẩu mới. Liên kết có hiệu lực trong 10 phút:\n${resetURL}\n\nNếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.`,
             });
         } catch {
             user.passwordResetToken = null;
@@ -207,7 +196,6 @@ export class AuthService {
 
         const user = await this.userService.findOneBy({
             passwordResetToken: hashedToken,
-            // check time token expires
             passwordResetExpires: MoreThan(new Date()),
         });
 
@@ -226,12 +214,12 @@ export class AuthService {
 
         await this.userService.save(user);
 
-
         return user;
     }
 
-    async getme(userId: string): Promise<User> {
+    async getMe(userId: string): Promise<User> {
         const user = await this.userService.findOne(userId);
+
         if (!user) {
             throw new AppError("Người dùng không tồn tại", 404);
         }

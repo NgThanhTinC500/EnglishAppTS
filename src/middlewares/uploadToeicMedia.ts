@@ -1,5 +1,5 @@
-import multer from "multer";
 import { NextFunction, Request, Response } from "express";
+import multer from "multer";
 
 const audioMimes = new Set([
     "audio/mpeg",
@@ -56,7 +56,7 @@ export const uploadToeicAudioSingle = uploadToeicMedia.single("audio");
 export const uploadToeicImages = uploadToeicMedia.array("images", 10);
 
 export function handleUploadToeicMediaError(
-    err: any,
+    err: unknown,
     _req: Request,
     res: Response,
     next: NextFunction

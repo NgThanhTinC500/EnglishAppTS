@@ -13,7 +13,6 @@ export class AuthController {
     this.authService = new AuthService(userService);
   }
 
-  // Tạo và gửi token về client — thuộc Controller vì dùng res
   private createSendToken(user: User, statusCode: number, res: Response) {
     const token = this.authService.signToken(user.id);
     const cookieExpiresIn = Number(process.env.JWT_COOKIE_EXPIRES_IN || 90);
@@ -73,7 +72,7 @@ export class AuthController {
   };
 
   getCurrentUser = catchAsync(async (req: Request, res: Response, _next: NextFunction) => {
-    const user = await this.authService.getme(req.user.id);
+    const user = await this.authService.getMe(req.user.id);
     res.status(200).json({
       status: "success",
       data: { user },

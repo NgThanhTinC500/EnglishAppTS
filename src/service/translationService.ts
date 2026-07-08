@@ -41,7 +41,6 @@ export class TranslationService {
         return null;
     }
 
-    // dịch văn bản sang tiếng Việt bằng Google Translate API, nếu có lỗi hoặc không tìm thấy sẽ trả về null 
     private async translateTextWithGoogle(text: string) {
         const key = this.getConfiguredEnvValue("GOOGLE_TRANSLATE_API_KEY");
         if (!key) return null;

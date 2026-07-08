@@ -10,7 +10,6 @@ export class AppError extends Error {
     this.status = `${statusCode}`.startsWith('4') ? 'Fail' : 'Error';
     this.isOperational = true;
 
-    // Ghi lại stack trace để dễ debug
     Error.captureStackTrace(this, this.constructor);
   }
 }
